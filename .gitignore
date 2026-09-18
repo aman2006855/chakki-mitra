@@ -35,3 +35,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# capacitor (generated - run scripts/setup-android.sh to regenerate)
+/android/
+/.gradle/
+*.apk
+*.aab

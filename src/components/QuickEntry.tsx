@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, Plus, Minus, Save, UserPlus, Clock, ChevronRight } from "lucide-react";
 import AddCustomer from "./AddCustomer";
+import BackgroundSms from "@/plugins/background-sms";
+import { isNativePlatform } from "@/lib/capacitor";
 
 interface SettingsData {
   shopName: string;
@@ -139,6 +141,24 @@ export default function QuickEntry({
         fetchDashboard();
         fetchRecent();
         onSaved();
+
+        if (isNativePlatform()) {
+          const customer = customers.find((c) => c.id === customerId);
+          if (customer?.phone) {
+            const productLabel = product === "atta" ? "आटा" : "दलिया";
+            const paymentLabel = paymentMode === "cash" ? "नगद" : "उधारी";
+            const smsText = [
+              `🌾 ${settings.shopName}`,
+              `${productLabel} ${weightNum}kg × ₹${rate}/kg = ₹${totalAmount.toFixed(0)}`,
+              `Mode: ${paymentLabel}`,
+              `Dhanyavaad!`,
+            ].join("\n");
+            BackgroundSms.sendSms({
+              phoneNumber: customer.phone,
+              message: smsText,
+            }).catch((e: any) => console.warn("SMS failed:", e));
+          }
+        }
       } else {
         setMessage({ type: "error", text: "❌ सेव नहीं हो पाई" });
       }
