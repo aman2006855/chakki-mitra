@@ -14,6 +14,7 @@ export const users = pgTable("users", {
   shopPhone: varchar("shop_phone", { length: 20 }),
   attaRate: numeric("atta_rate"),
   daliaRate: numeric("dalia_rate"),
+  password: varchar("password", { length: 255 }),
   isRegistered: boolean("is_registered").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
