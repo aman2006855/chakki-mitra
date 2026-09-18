@@ -5,25 +5,30 @@ import { eq } from "drizzle-orm";
 
 export async function POST(req: Request) {
   try {
-    const { email, password } = await req.json();
-    if (!email || !password) {
-      return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
+    const { email, password, action } = await req.json();
+    if (!email || !password || !action) {
+      return NextResponse.json({ error: "Email, password and action are required" }, { status: 400 });
     }
 
-    // Check if user exists
     let [user] = await db.select().from(users).where(eq(users.email, email));
 
-    if (!user) {
-      // Create new user
+    if (action === "login") {
+      if (!user) {
+        return NextResponse.json({ error: "यह अकाउंट मौजूद नहीं है। कृपया नया अकाउंट बनाएं।" }, { status: 404 });
+      }
+      if (user.password !== password) {
+        return NextResponse.json({ error: "पासवर्ड गलत है।" }, { status: 401 });
+      }
+    } else if (action === "signup") {
+      if (user) {
+        return NextResponse.json({ error: "यह ईमेल पहले से रजिस्टर्ड है। कृपया लॉगिन करें।" }, { status: 409 });
+      }
       [user] = await db.insert(users).values({
         email,
-        password, // In a real app, hash this!
+        password,
       }).returning();
     } else {
-      // Verify password
-      if (user.password !== password) {
-         return NextResponse.json({ error: "Invalid password" }, { status: 401 });
-      }
+      return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
 
     return NextResponse.json({
