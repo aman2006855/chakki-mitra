@@ -174,6 +174,7 @@ export default function QuickEntry({
 
   const formatCurrency = (n: number) => `₹${n.toFixed(0)}`;
 
+  return (
     <div className="px-3 py-2 flex flex-col h-full space-y-3">
       {/* Message Banner */}
       {message && (
