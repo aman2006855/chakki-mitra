@@ -1,0 +1,58 @@
+import { pgTable, serial, varchar, numeric, text, timestamp, pgEnum, boolean } from "drizzle-orm/pg-core";
+
+export const productTypeEnum = pgEnum("product_type", ["atta", "dalia"]);
+export const paymentModeEnum = pgEnum("payment_mode", ["cash", "credit"]);
+export const paymentTypeEnum = pgEnum("payment_type", ["advance", "dues_payment", "partial_payment"]);
+
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  googleId: varchar("google_id", { length: 200 }).unique(),
+  email: varchar("email", { length: 300 }).notNull(),
+  name: varchar("name", { length: 200 }),
+  phone: varchar("phone", { length: 20 }),
+  shopName: varchar("shop_name", { length: 200 }),
+  shopPhone: varchar("shop_phone", { length: 20 }),
+  attaRate: numeric("atta_rate"),
+  daliaRate: numeric("dalia_rate"),
+  isRegistered: boolean("is_registered").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const customers = pgTable("customers", {
+  id: serial("id").primaryKey(),
+  userId: serial("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  phone: varchar("phone", { length: 20 }).notNull(),
+  address: text("address").default(""),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const transactions = pgTable("transactions", {
+  id: serial("id").primaryKey(),
+  userId: serial("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  customerId: serial("customer_id").references(() => customers.id, { onDelete: "cascade" }).notNull(),
+  productType: productTypeEnum("product_type").notNull(),
+  weight: numeric("weight").notNull(),
+  rate: numeric("rate").notNull(),
+  amount: numeric("amount").notNull(),
+  paymentMode: paymentModeEnum("payment_mode").notNull(),
+  notes: text("notes").default(""),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const payments = pgTable("payments", {
+  id: serial("id").primaryKey(),
+  userId: serial("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  customerId: serial("customer_id").references(() => customers.id, { onDelete: "cascade" }).notNull(),
+  amount: numeric("amount").notNull(),
+  type: paymentTypeEnum("type").notNull(),
+  description: text("description").default(""),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Dummy test table
+export const testTable = pgTable("test_table", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
