@@ -175,11 +175,11 @@ export default function QuickEntry({
   const formatCurrency = (n: number) => `₹${n.toFixed(0)}`;
 
   return (
-    <div className="px-3 py-2 flex flex-col h-full space-y-3">
+    <div className="px-4 py-3 flex flex-col h-full space-y-4">
       {/* Message Banner */}
       {message && (
         <div
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium text-center ${
+          className={`px-4 py-2 rounded-lg text-sm font-medium text-center ${
             message.type === "success"
               ? "bg-green-50 text-green-700 border border-green-200"
               : "bg-red-50 text-red-700 border border-red-200"
@@ -191,22 +191,22 @@ export default function QuickEntry({
 
       {/* Daily Summary */}
       {dashboard && (
-        <div className="grid grid-cols-3 gap-2">
-          <div className="bg-white rounded-lg border border-gray-200 p-1.5 text-center shadow-sm">
-            <div className="text-[9px] text-gray-500 font-medium">आज की कमाई</div>
-            <div className="text-sm font-bold text-gray-900 leading-tight">
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-white rounded-xl border border-gray-200 p-3 text-center shadow-sm">
+            <div className="text-[11px] text-gray-500 font-medium">आज की कमाई</div>
+            <div className="text-base font-bold text-gray-900 leading-tight mt-0.5">
               {formatCurrency(dashboard.totalSales)}
             </div>
           </div>
-          <div className="bg-green-50 rounded-lg border border-green-200 p-1.5 text-center">
-            <div className="text-[9px] text-green-600 font-medium">नगद</div>
-            <div className="text-sm font-bold text-green-700 leading-tight">
+          <div className="bg-green-50 rounded-xl border border-green-200 p-3 text-center">
+            <div className="text-[11px] text-green-600 font-medium">नगद</div>
+            <div className="text-base font-bold text-green-700 leading-tight mt-0.5">
               {formatCurrency(dashboard.totalCash)}
             </div>
           </div>
-          <div className="bg-red-50 rounded-lg border border-red-200 p-1.5 text-center">
-            <div className="text-[9px] text-red-600 font-medium">बकाया</div>
-            <div className="text-sm font-bold text-red-700 leading-tight">
+          <div className="bg-red-50 rounded-xl border border-red-200 p-3 text-center">
+            <div className="text-[11px] text-red-600 font-medium">बकाया</div>
+            <div className="text-base font-bold text-red-700 leading-tight mt-0.5">
               {formatCurrency(dashboard.totalOutstanding)}
             </div>
           </div>
@@ -214,39 +214,39 @@ export default function QuickEntry({
       )}
 
       {/* Product Selection */}
-      <div className="flex gap-2">
+      <div className="flex gap-3">
         <button
           type="button"
           onClick={() => { setProduct("atta"); setWeight(""); }}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border text-sm transition-all ${
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border text-sm transition-all ${
             product === "atta"
               ? "border-amber-400 bg-amber-50 shadow-sm font-bold text-amber-800"
               : "border-gray-200 bg-white text-gray-600 font-medium"
           }`}
         >
           <span>🌾 आटा</span>
-          <span className="text-[10px] opacity-70">₹{settings.attaRate}/kg</span>
+          <span className="text-[11px] opacity-70">₹{settings.attaRate}/kg</span>
         </button>
         <button
           type="button"
           onClick={() => { setProduct("dalia"); setWeight(""); }}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border text-sm transition-all ${
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border text-sm transition-all ${
             product === "dalia"
               ? "border-amber-400 bg-amber-50 shadow-sm font-bold text-amber-800"
               : "border-gray-200 bg-white text-gray-600 font-medium"
           }`}
         >
           <span>🥣 दलिया</span>
-          <span className="text-[10px] opacity-70">₹{settings.daliaRate}/kg</span>
+          <span className="text-[11px] opacity-70">₹{settings.daliaRate}/kg</span>
         </button>
       </div>
 
       {/* Customer Selection */}
-      <div className="flex gap-2 relative">
+      <div className="flex gap-3 relative">
         <button
           type="button"
           onClick={() => setSearchOpen(true)}
-          className="flex-1 flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg text-left shadow-sm"
+          className="flex-1 flex items-center gap-2.5 px-4 py-3 bg-white border border-gray-300 rounded-xl text-left shadow-sm"
         >
           <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
           <span className="text-sm font-medium text-gray-700 truncate">
@@ -258,21 +258,21 @@ export default function QuickEntry({
         <button
           type="button"
           onClick={() => setShowAddCustomer(true)}
-          className="flex items-center justify-center w-10 bg-orange-500 text-white rounded-lg active:bg-orange-600 flex-shrink-0 shadow-sm"
+          className="flex items-center justify-center w-12 bg-orange-500 text-white rounded-xl active:bg-orange-600 flex-shrink-0 shadow-sm"
         >
-          <UserPlus className="w-4 h-4" />
+          <UserPlus className="w-5 h-5" />
         </button>
         
         {/* Customer Search Dropdown */}
         {searchOpen && (
-          <div className="absolute top-full mt-1 w-full z-10 bg-white border border-gray-200 rounded-lg shadow-xl max-h-40 overflow-y-auto">
+          <div className="absolute top-full mt-1 w-full z-10 bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
             <input
               type="text"
               autoFocus
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="खोजें..."
-              className="w-full px-3 py-2 border-b border-gray-100 text-sm outline-none"
+              className="w-full px-4 py-2.5 border-b border-gray-100 text-sm outline-none"
               onBlur={() => setTimeout(() => setSearchOpen(false), 200)}
             />
             {filteredCustomers.map((c) => (
@@ -284,13 +284,13 @@ export default function QuickEntry({
                   setSearchOpen(false);
                   setSearchQuery("");
                 }}
-                className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left ${
+                className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left ${
                   customerId === c.id ? "bg-orange-50 text-orange-700" : "hover:bg-gray-50"
                 }`}
               >
                 <div className="truncate pr-2">
                   <div className="font-medium text-gray-800">{c.name}</div>
-                  <div className="text-[10px] text-gray-500">{c.phone}</div>
+                  <div className="text-[11px] text-gray-500">{c.phone}</div>
                 </div>
               </button>
             ))}
@@ -300,13 +300,13 @@ export default function QuickEntry({
 
       {/* Weight Input */}
       <div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => handleWeightButton(-0.5)}
-            className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 border border-gray-200 active:bg-gray-200"
+            className="flex items-center justify-center w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 active:bg-gray-200"
           >
-            <Minus className="w-5 h-5 text-gray-700" />
+            <Minus className="w-6 h-6 text-gray-700" />
           </button>
           <div className="flex-1 relative">
             <input
@@ -317,26 +317,26 @@ export default function QuickEntry({
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
               placeholder="वजन (kg)"
-              className="w-full text-center text-xl font-bold py-1.5 rounded-lg border border-gray-300 bg-white outline-none focus:ring-2 focus:ring-amber-300 shadow-sm"
+              className="w-full text-center text-2xl font-bold py-2.5 rounded-xl border border-gray-300 bg-white outline-none focus:ring-2 focus:ring-amber-300 shadow-sm"
               inputMode="decimal"
             />
           </div>
           <button
             type="button"
             onClick={() => handleWeightButton(0.5)}
-            className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 border border-gray-200 active:bg-gray-200"
+            className="flex items-center justify-center w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 active:bg-gray-200"
           >
-            <Plus className="w-5 h-5 text-gray-700" />
+            <Plus className="w-6 h-6 text-gray-700" />
           </button>
         </div>
         {/* Quick weight buttons */}
-        <div className="flex justify-between mt-2">
+        <div className="flex justify-between mt-3">
           {[2, 5, 10, 15, 20].map((w) => (
             <button
               key={w}
               type="button"
               onClick={() => setWeight(w.toString())}
-              className={`px-2 py-1 rounded-md text-[11px] font-bold border transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
                 weight === w.toString()
                   ? "bg-amber-500 text-white border-amber-600"
                   : "bg-white text-gray-600 border-gray-200 active:bg-gray-100"
@@ -349,13 +349,13 @@ export default function QuickEntry({
       </div>
 
       {/* Amount Display */}
-      <div className="bg-amber-50 rounded-lg p-2 border border-amber-200 flex items-center justify-between">
-        <div className="text-[10px] text-amber-700 font-medium">
+      <div className="bg-amber-50 rounded-xl p-3 border border-amber-200 flex items-center justify-between">
+        <div className="text-xs text-amber-700 font-medium">
           {weightNum || 0}kg × ₹{rate}/kg
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-amber-800 font-bold">कुल राशि:</span>
-          <span className="text-xl font-black text-amber-600 tracking-tight">
+          <span className="text-sm text-amber-800 font-bold">कुल राशि:</span>
+          <span className="text-2xl font-black text-amber-600 tracking-tight">
             ₹{totalAmount.toFixed(0)}
           </span>
         </div>
@@ -367,15 +367,15 @@ export default function QuickEntry({
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         placeholder="नोट (वैकल्पिक)..."
-        className="w-full px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs outline-none focus:ring-2 focus:ring-amber-300 shadow-sm"
+        className="w-full px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-sm outline-none focus:ring-2 focus:ring-amber-300 shadow-sm"
       />
 
       {/* Payment Mode & Save Button */}
-      <div className="flex gap-2 pt-1 pb-4">
+      <div className="flex gap-3 pt-1 pb-4">
         <button
           type="button"
           onClick={() => setPaymentMode("cash")}
-          className={`flex-1 py-2.5 rounded-lg border font-bold text-sm transition-all ${
+          className={`flex-1 py-3 rounded-xl border font-bold text-sm transition-all ${
             paymentMode === "cash"
               ? "border-green-500 bg-green-50 text-green-700 shadow-sm"
               : "border-gray-200 bg-white text-gray-500"
@@ -386,7 +386,7 @@ export default function QuickEntry({
         <button
           type="button"
           onClick={() => setPaymentMode("credit")}
-          className={`flex-1 py-2.5 rounded-lg border font-bold text-sm transition-all ${
+          className={`flex-1 py-3 rounded-xl border font-bold text-sm transition-all ${
             paymentMode === "credit"
               ? "border-red-500 bg-red-50 text-red-700 shadow-sm"
               : "border-gray-200 bg-white text-gray-500"
@@ -399,13 +399,13 @@ export default function QuickEntry({
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="flex-[1.5] flex items-center justify-center gap-1.5 bg-orange-500 text-white py-2.5 rounded-lg font-black text-sm active:bg-orange-600 transition-colors disabled:opacity-60 shadow-md"
+          className="flex-[1.5] flex items-center justify-center gap-2 bg-orange-500 text-white py-3 rounded-xl font-black text-sm active:bg-orange-600 transition-colors disabled:opacity-60 shadow-md"
         >
           {saving ? (
-            <span className="text-xs">सेव...</span>
+            <span className="text-sm">सेव...</span>
           ) : (
             <>
-              <Save className="w-4 h-4" />
+              <Save className="w-5 h-5" />
               एंट्री सेव करें
             </>
           )}
