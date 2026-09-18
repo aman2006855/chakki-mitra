@@ -22,6 +22,7 @@ export default function LoginPage() {
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
@@ -65,6 +66,10 @@ export default function LoginPage() {
     setErrorMsg("");
     if (!email || !password) {
       setErrorMsg("ईमेल और पासवर्ड दोनों डालें");
+      return;
+    }
+    if (activeTab === "signup" && password !== confirmPassword) {
+      setErrorMsg("पासवर्ड आपस में मेल नहीं खाते");
       return;
     }
     
@@ -184,6 +189,17 @@ export default function LoginPage() {
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-gray-50/50 focus:bg-white transition-colors"
                 />
               </div>
+              {activeTab === "signup" && (
+                <div>
+                  <input
+                    type="password"
+                    placeholder="पासवर्ड की पुष्टि (Confirm Password)"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-gray-50/50 focus:bg-white transition-colors"
+                  />
+                </div>
+              )}
               
               {errorMsg && (
                 <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl border border-red-100 flex items-start gap-2">
