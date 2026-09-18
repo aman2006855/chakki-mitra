@@ -23,6 +23,7 @@ const steps: Step[] = [
 ];
 
 export default function RegisterPage() {
+  const [showWelcome, setShowWelcome] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const [values, setValues] = useState<Record<string, string>>({
     name: "",
@@ -95,6 +96,51 @@ export default function RegisterPage() {
     }
     setSaving(false);
   };
+
+  if (showWelcome) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-500 to-amber-400 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute top-0 left-0 w-32 h-32 bg-orange-400 rounded-full mix-blend-multiply filter blur-2xl opacity-70 animate-blob" />
+        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-300 rounded-full mix-blend-multiply filter blur-2xl opacity-70 animate-blob animation-delay-2000" />
+        <div className="absolute -bottom-8 left-20 w-32 h-32 bg-orange-600 rounded-full mix-blend-multiply filter blur-2xl opacity-70 animate-blob animation-delay-4000" />
+
+        <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center relative z-10 border border-white/20">
+          {/* Om symbol or Kalash */}
+          <div className="w-20 h-20 mx-auto bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-4xl mb-6 shadow-inner">
+            ॐ
+          </div>
+
+          <h1 className="text-2xl font-bold text-orange-600 mb-2 font-serif tracking-wide">
+            ॥ श्री गणेशाय नमः ॥
+          </h1>
+          
+          <div className="flex items-center justify-center gap-4 text-orange-500 font-semibold mb-6">
+            <span>शुभ</span>
+            <span className="text-xl">❋</span>
+            <span>लाभ</span>
+          </div>
+
+          <h2 className="text-xl font-bold text-gray-800 mb-4">
+            चक्की मित्र में आपका स्वागत है!
+          </h2>
+          
+          <p className="text-gray-600 mb-8 leading-relaxed">
+            हम आपके व्यापार की अपार सुख, शांति, समृद्धि और सफलता की मंगल कामना करते हैं।<br/><br/>
+            चलिए, आपके डिजिटल बहीखाते की शुरुआत करते हैं।
+          </p>
+
+          <button
+            onClick={() => setShowWelcome(false)}
+            className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold text-lg hover:from-orange-600 hover:to-amber-600 active:scale-[0.98] transition-all shadow-lg"
+          >
+            शुरुआत करें
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const progress = ((currentStep + 1) / steps.length) * 100;
 
