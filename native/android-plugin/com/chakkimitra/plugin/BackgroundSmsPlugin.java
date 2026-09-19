@@ -1,16 +1,15 @@
 package com.chakkimitra.plugin;
 
 import android.Manifest;
-import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.telephony.SmsManager;
 import android.util.Log;
 
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.getcapacitor.JSObject;
+import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
@@ -30,8 +29,6 @@ import com.getcapacitor.annotation.PermissionCallback;
 public class BackgroundSmsPlugin extends Plugin {
 
     private static final String TAG = "BackgroundSms";
-    private static final int SMS_SEND_REQUEST = 1001;
-    private PluginCall pendingCall;
 
     @PluginMethod
     public void sendSms(PluginCall call) {
@@ -47,9 +44,8 @@ public class BackgroundSmsPlugin extends Plugin {
             return;
         }
 
-        if (!hasSmsPermission()) {
-            pendingCall = call;
-            requestPermissionForAlias("sms", call);
+        if (getPermissionState("sms") != PermissionState.GRANTED) {
+            requestPermissionForAlias("sms", call, "smsPermissionCallback");
             return;
         }
 
@@ -57,17 +53,11 @@ public class BackgroundSmsPlugin extends Plugin {
     }
 
     @PermissionCallback
-    private void smsCallback(PluginCall call) {
-        if (call == null) {
-            call = pendingCall;
-            pendingCall = null;
-        }
+    private void smsPermissionCallback(PluginCall call) {
         if (call == null) return;
 
-        if (hasSmsPermission()) {
-            String phoneNumber = call.getString("phoneNumber");
-            String message = call.getString("message");
-            sendSmsInternal(call, phoneNumber, message);
+        if (getPermissionState("sms") == PermissionState.GRANTED) {
+            sendSmsInternal(call, call.getString("phoneNumber"), call.getString("message"));
         } else {
             call.reject("SMS permission denied. Please enable it in Settings.");
         }
@@ -76,14 +66,8 @@ public class BackgroundSmsPlugin extends Plugin {
     @PluginMethod
     public void checkPermission(PluginCall call) {
         JSObject ret = new JSObject();
-        ret.put("granted", hasSmsPermission());
+        ret.put("granted", getPermissionState("sms") == PermissionState.GRANTED);
         call.resolve(ret);
-    }
-
-    private boolean hasSmsPermission() {
-        Context context = getContext();
-        return ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS)
-                == PackageManager.PERMISSION_GRANTED;
     }
 
     private void sendSmsInternal(PluginCall call, String phoneNumber, String message) {
