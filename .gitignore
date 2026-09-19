@@ -41,3 +41,10 @@ next-env.d.ts
 /.gradle/
 *.apk
 *.aab
+
+# signing (NEVER commit these)
+*.keystore
+*.jks
+keystore.properties
+gradle.properties
+!gradle.properties
