@@ -43,8 +43,8 @@ jobs:
           fi
           npm ci
 
-      - name: Build Next.js (skip db:push in CI)
-        run: npx next build
+      - name: Build Next.js static export (no DB push)
+        run: npm run build:apk
 
       - name: Prepare web directory for Capacitor
         run: |

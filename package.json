@@ -4,6 +4,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "npm run db:push && next build",
+    "build:api": "npm run db:push && next build",
+    "build:apk": "next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
