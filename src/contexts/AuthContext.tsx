@@ -99,7 +99,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function logout() {
     clearToken();
     setUser(null);
-    window.location.href = "/login";
   }
 
   function saveSession(userId: number, name: string, token: string) {

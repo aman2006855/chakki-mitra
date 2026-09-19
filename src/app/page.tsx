@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import QuickEntry from "@/components/QuickEntry";
@@ -28,6 +29,7 @@ interface CustomerData {
 
 export default function App() {
   const { user, loading, saveSession } = useAuth();
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("home");
   const [settings, setSettings] = useState<SettingsData>({
     shopName: "श्री श्याम आटा चक्की",
@@ -73,18 +75,6 @@ export default function App() {
     })();
   }, []);
 
-  useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      window.location.href = "/login";
-      return;
-    }
-    if (!user.isRegistered) {
-      window.location.href = "/register";
-      return;
-    }
-  }, [loading, user]);
-
   const refreshData = () => {
     setRefreshKey((k) => k + 1);
     (async () => {
@@ -118,6 +108,16 @@ export default function App() {
         </div>
       </div>
     );
+  }
+
+  if (!user) {
+    router.replace("/login");
+    return null;
+  }
+
+  if (!user.isRegistered) {
+    router.replace("/register");
+    return null;
   }
 
   return (

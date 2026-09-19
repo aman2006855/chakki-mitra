@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Save, Download, Upload, RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SettingsData {
   shopName: string;
@@ -18,6 +20,8 @@ interface SettingsProps {
 }
 
 export default function Settings({ settings, onUpdate }: SettingsProps) {
+  const router = useRouter();
+  const { logout } = useAuth();
   const [shopName, setShopName] = useState(settings.shopName);
   const [shopPhone, setShopPhone] = useState(settings.shopPhone);
   const [attaRate, setAttaRate] = useState(settings.attaRate);
@@ -186,8 +190,8 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
       <button
         type="button"
         onClick={() => {
-          try { localStorage.removeItem("chakki_mitra_token"); } catch {}
-          window.location.href = "/login";
+          logout();
+          router.replace("/login");
         }}
         className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-red-200 text-red-600 font-semibold active:bg-red-50"
       >

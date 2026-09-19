@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Check, ChevronRight, ChevronLeft, User, Store, Phone, Wheat } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -24,6 +25,7 @@ const steps: Step[] = [
 ];
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [showWelcome, setShowWelcome] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const [values, setValues] = useState<Record<string, string>>({
@@ -42,10 +44,10 @@ export default function RegisterPage() {
         const res = await api("/api/auth/session");
         const data = await res.json();
         if (!data.auth) {
-          window.location.href = "/login";
+          router.replace("/login");
         }
       } catch {
-        window.location.href = "/login";
+        router.replace("/login");
       }
     }
     checkAuth();
@@ -87,7 +89,7 @@ export default function RegisterPage() {
       const result = await res.json();
       console.log("[register] response:", JSON.stringify(result), "status:", res.status);
 
-      setTimeout(() => { window.location.href = "/"; }, 200);
+      setTimeout(() => { router.replace("/"); }, 200);
     } catch (e) {
       console.error("[register] error:", e);
       setError("सेव नहीं हो पाई, फिर से कोशिश करें");

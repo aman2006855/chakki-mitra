@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { API_BASE } from "@/lib/config";
 
@@ -13,6 +14,7 @@ function getToken(): string | null {
 }
 
 export default function LoginPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
@@ -34,9 +36,9 @@ export default function LoginPage() {
           const settingsRes = await api("/api/settings");
           const settings = await settingsRes.json();
           if (settings.isRegistered) {
-            window.location.href = "/";
+            router.replace("/");
           } else {
-            window.location.href = "/register";
+            router.replace("/register");
           }
         }
       } catch {
@@ -45,9 +47,9 @@ export default function LoginPage() {
           if (lsSettings) {
             const settings = JSON.parse(lsSettings);
             if (settings.isRegistered) {
-              window.location.href = "/";
+              router.replace("/");
             } else {
-              window.location.href = "/register";
+              router.replace("/register");
             }
           }
         } catch {}
@@ -87,9 +89,9 @@ export default function LoginPage() {
 
       setTimeout(() => {
         if (data.isRegistered) {
-          window.location.href = "/";
+          router.replace("/");
         } else {
-          window.location.href = "/register";
+          router.replace("/register");
         }
       }, 300);
     } catch (e: any) {
