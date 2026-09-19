@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronRight, ChevronLeft, User, Store, Phone, Wheat } from "lucide-react";
 import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Step = {
   id: number;
@@ -26,6 +27,7 @@ const steps: Step[] = [
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { saveSession, user } = useAuth();
   const [showWelcome, setShowWelcome] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const [values, setValues] = useState<Record<string, string>>({
@@ -39,18 +41,9 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    async function checkAuth() {
-      try {
-        const res = await api("/api/auth/session");
-        const data = await res.json();
-        if (!data.auth) {
-          router.replace("/login");
-        }
-      } catch {
-        router.replace("/login");
-      }
+    if (!user) {
+      router.replace("/login");
     }
-    checkAuth();
   }, []);
 
   const step = steps[currentStep];
@@ -88,6 +81,11 @@ export default function RegisterPage() {
       });
       const result = await res.json();
       console.log("[register] response:", JSON.stringify(result), "status:", res.status);
+
+      localStorage.setItem("chakki_mitra_settings", JSON.stringify(body));
+      if (user) {
+        saveSession(user.userId, user.name, "", true, values.shopName);
+      }
 
       setTimeout(() => { router.replace("/"); }, 200);
     } catch (e) {

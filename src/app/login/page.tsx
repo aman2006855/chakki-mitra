@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { API_BASE } from "@/lib/config";
+import { useAuth } from "@/contexts/AuthContext";
 
 function getToken(): string | null {
   try {
@@ -15,6 +16,7 @@ function getToken(): string | null {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { saveSession } = useAuth();
   const [authChecked, setAuthChecked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
@@ -24,33 +26,12 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    async function checkAuth() {
-      const token = getToken();
-      if (!token) {
-        setAuthChecked(true);
-        return;
-      }
-      try {
-        const res = await api("/api/auth/session");
-        const data = await res.json();
-        if (data.auth) {
-          try {
-            const settingsRes = await api("/api/settings");
-            const settings = await settingsRes.json();
-            if (settings.isRegistered) {
-              router.replace("/");
-            } else {
-              router.replace("/register");
-            }
-          } catch {
-            router.replace("/");
-          }
-          return;
-        }
-      } catch {}
-      setAuthChecked(true);
+    const token = getToken();
+    if (token) {
+      router.replace("/");
+      return;
     }
-    checkAuth();
+    setAuthChecked(true);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -75,9 +56,7 @@ export default function LoginPage() {
       if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
       if (data.error) throw new Error(data.error);
 
-      try {
-        localStorage.setItem("chakki_mitra_token", data.token);
-      } catch {}
+      saveSession(data.userId, data.name || "", data.token, data.isRegistered, "");
 
       setTimeout(() => {
         if (data.isRegistered) {

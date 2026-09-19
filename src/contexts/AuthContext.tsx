@@ -9,7 +9,7 @@ interface AuthContextType {
   loading: boolean;
   login: () => void;
   logout: () => void;
-  saveSession: (userId: number, name: string, token: string) => void;
+  saveSession: (userId: number, name: string, token: string, isRegistered?: boolean, shopName?: string) => void;
 }
 
 const TOKEN_KEY = "chakki_mitra_token";
@@ -101,8 +101,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }
 
-  function saveSession(userId: number, name: string, token: string) {
+  function saveSession(userId: number, name: string, token: string, isRegistered: boolean = false, shopName: string = "") {
     setToken(token);
+    setUser({ userId, name, isRegistered, shopName });
+    setLoading(false);
   }
 
   return <AuthContext.Provider value={{ user, loading, login, logout, saveSession }}>{children}</AuthContext.Provider>;
