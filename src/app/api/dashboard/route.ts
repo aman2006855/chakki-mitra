@@ -1,19 +1,14 @@
-import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { transactions, payments, customers } from "@/db/schema";
 import { sum, eq, sql, and } from "drizzle-orm";
-import { cookies } from "next/headers";
+import { getUserIdFromRequest } from "@/lib/auth";
+import { ok, err, options } from "@/lib/cors";
 
-async function getSession() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session");
-  if (!sessionCookie) throw new Error("unauthorized");
-  return JSON.parse(sessionCookie.value);
-}
+export function OPTIONS() { return options(); }
 
-export async function GET() {
-  const session = await getSession();
-  const userId = session.userId;
+export async function GET(request: Request) {
+  const userId = getUserIdFromRequest(request);
+  if (!userId) return err("unauthorized", 401);
 
   const todayCredit = await db.select({ total: sum(transactions.amount) }).from(transactions).where(and(eq(transactions.paymentMode, "credit"), eq(transactions.userId, userId)));
   const totalCredit = parseFloat((todayCredit[0]?.total || 0).toString());
@@ -30,5 +25,5 @@ export async function GET() {
   const totalOutstanding = totalCredit - totalDuesPaid;
   const customerCount = await db.select({ count: sql<number>`count(*)` }).from(customers).where(eq(customers.userId, userId));
 
-  return NextResponse.json({ totalCredit, totalCash, totalSales: totalCredit + totalCash, totalAtta, totalDalia, totalAdvance, totalDuesPaid, totalOutstanding: Math.max(0, totalOutstanding), customerCount: Number(customerCount[0]?.count || 0) });
+  return ok({ totalCredit, totalCash, totalSales: totalCredit + totalCash, totalAtta, totalDalia, totalAdvance, totalDuesPaid, totalOutstanding: Math.max(0, totalOutstanding), customerCount: Number(customerCount[0]?.count || 0) });
 }

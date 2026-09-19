@@ -1,22 +1,19 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { verifyToken } from "@/lib/auth";
 
-export async function GET() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session");
-  if (!sessionCookie) {
-    return NextResponse.json({ auth: false, debug: "no session cookie" });
+export async function GET(request: Request) {
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return NextResponse.json({ auth: false });
   }
-  try {
-    const session = JSON.parse(sessionCookie.value);
-    return NextResponse.json({ auth: true, ...session, debug: `userId=${session.userId}` });
-  } catch (e) {
-    return NextResponse.json({ auth: false, debug: `parse error: ${e}` });
+  const token = authHeader.slice(7);
+  const session = verifyToken(token);
+  if (!session) {
+    return NextResponse.json({ auth: false });
   }
+  return NextResponse.json({ auth: true, ...session });
 }
 
 export async function POST() {
-  const response = NextResponse.json({ success: true });
-  response.cookies.delete("session");
-  return response;
+  return NextResponse.json({ success: true, message: "Token should be deleted client-side" });
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
 
 interface Bill {
   transactionId: number;
@@ -32,7 +33,7 @@ export default function BillsList({ customerId }: BillsListProps) {
   const [expandedBill, setExpandedBill] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch(`/api/customers/bills?id=${customerId}`)
+    api(`/api/customers/bills?id=${customerId}`)
       .then((r) => r.json())
       .then((data) => {
         setBills(data.bills || []);
@@ -70,7 +71,6 @@ export default function BillsList({ customerId }: BillsListProps) {
 
   return (
     <div className="space-y-3">
-      {/* Final balance */}
       <div className={`rounded-xl p-3 text-center font-bold ${
         Math.abs(finalBalance) < 0.01
           ? "bg-gray-100 text-gray-700"
@@ -87,7 +87,6 @@ export default function BillsList({ customerId }: BillsListProps) {
 
       {bills.map((bill) => (
         <div key={bill.transactionId} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          {/* Bill Header */}
           <button
             type="button"
             onClick={() => setExpandedBill(expandedBill === bill.transactionId ? null : bill.transactionId)}
@@ -118,10 +117,8 @@ export default function BillsList({ customerId }: BillsListProps) {
             </div>
           </button>
 
-          {/* Expanded Bill Detail */}
           {expandedBill === bill.transactionId && (
             <div className="border-t border-gray-100 px-3 pb-3 space-y-2">
-              {/* Previous Balance */}
               {Math.abs(bill.previousBalance) > 0.01 && (
                 <div className={`rounded-lg p-2.5 ${
                   bill.previousBalance > 0 ? "bg-red-50" : "bg-blue-50"
@@ -138,7 +135,6 @@ export default function BillsList({ customerId }: BillsListProps) {
                 </div>
               )}
 
-              {/* Current Bill */}
               <div className="bg-amber-50 rounded-lg p-2.5">
                 <div className="text-xs font-semibold mb-1">📋 इस बिल की राशि</div>
                 <div className="flex justify-between text-sm">
@@ -147,7 +143,6 @@ export default function BillsList({ customerId }: BillsListProps) {
                 </div>
               </div>
 
-              {/* Advance Applied */}
               {bill.advanceApplied > 0 && (
                 <div className="bg-green-50 rounded-lg p-2.5">
                   <div className="text-xs font-semibold mb-1">✅ एडवांस कट गया</div>
@@ -163,7 +158,6 @@ export default function BillsList({ customerId }: BillsListProps) {
                 </div>
               )}
 
-              {/* Payments */}
               {bill.paymentsReceived > 0 && (
                 <div className="bg-purple-50 rounded-lg p-2.5">
                   <div className="text-xs font-semibold mb-1">💰 इस बिल में जमा राशि</div>
@@ -182,7 +176,6 @@ export default function BillsList({ customerId }: BillsListProps) {
                 </div>
               )}
 
-              {/* Summary */}
               <div className="bg-gray-50 rounded-lg p-2.5 border border-gray-200">
                 <div className="text-xs font-semibold mb-1">📊 इस बिल का सारांश</div>
                 <div className="space-y-1 text-sm">
@@ -221,7 +214,6 @@ export default function BillsList({ customerId }: BillsListProps) {
                 </div>
               </div>
 
-              {/* Running Balance after this bill */}
               <div className={`rounded-lg p-2 text-center text-sm font-bold ${
                 Math.abs(bill.newBalance) < 0.01
                   ? "bg-gray-100 text-gray-700"

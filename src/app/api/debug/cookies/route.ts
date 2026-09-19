@@ -1,11 +1,7 @@
-import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { ok, options } from "@/lib/cors";
+
+export function OPTIONS() { return options(); }
 
 export async function GET() {
-  const cookieStore = await cookies();
-  const allCookies: Record<string, string> = {};
-  for (const [name, cookie] of cookieStore) {
-    allCookies[name] = cookie.value;
-  }
-  return NextResponse.json({ cookies: allCookies, count: Object.keys(allCookies).length });
+  return ok({ message: "Debug endpoint - auth is now token-based" });
 }

@@ -1,22 +1,17 @@
-import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { transactions, payments } from "@/db/schema";
 import { eq, asc, and } from "drizzle-orm";
-import { cookies } from "next/headers";
+import { getUserIdFromRequest } from "@/lib/auth";
+import { ok, err, options } from "@/lib/cors";
 
-async function getSession() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session");
-  if (!sessionCookie) throw new Error("unauthorized");
-  return JSON.parse(sessionCookie.value);
-}
+export function OPTIONS() { return options(); }
 
-export async function GET(req: Request) {
-  const session = await getSession();
-  const userId = session.userId;
-  const { searchParams } = new URL(req.url);
+export async function GET(request: Request) {
+  const userId = getUserIdFromRequest(request);
+  if (!userId) return err("unauthorized", 401);
+  const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
-  if (!id) return NextResponse.json({ error: "Customer ID required" }, { status: 400 });
+  if (!id) return err("Customer ID required", 400);
 
   const customerId = Number(id);
 
@@ -74,5 +69,5 @@ export async function GET(req: Request) {
   }
 
   bills.reverse();
-  return NextResponse.json({ bills, finalBalance: runningBalance });
+  return ok({ bills, finalBalance: runningBalance });
 }

@@ -11,6 +11,7 @@ import {
   FileText,
 } from "lucide-react";
 import BillsList from "./BillsList";
+import { api } from "@/lib/api";
 
 interface CustomerWithDues {
   id: number;
@@ -83,7 +84,7 @@ export default function CustomerDetail({
   const fetchDetail = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/customers/detail?id=${customer.id}`);
+      const res = await api(`/api/customers/detail?id=${customer.id}`);
       if (res.ok) {
         const data = await res.json();
         setTransactions(data.transactions || []);
@@ -99,9 +100,8 @@ export default function CustomerDetail({
   const handlePayment = async () => {
     if (!paymentAmount || parseFloat(paymentAmount) <= 0) return;
     try {
-      await fetch("/api/payments", {
+      await api("/api/payments", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customerId: customer.id,
           amount: parseFloat(paymentAmount).toString(),
@@ -151,7 +151,6 @@ export default function CustomerDetail({
 
   return (
     <div className="pb-6">
-      {/* Back + Header */}
       <div className="flex items-center gap-2 px-4 py-3 bg-white border-b border-gray-200 sticky top-0 z-10">
         <button type="button" onClick={onBack} className="p-1.5 rounded-lg hover:bg-gray-100">
           <ArrowLeft className="w-5 h-5" />
@@ -177,7 +176,6 @@ export default function CustomerDetail({
         </div>
       </div>
 
-      {/* Balance Summary */}
       <div className="px-4 py-3">
         <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
@@ -213,7 +211,6 @@ export default function CustomerDetail({
         </div>
       </div>
 
-      {/* Action Buttons */}
       <div className="px-4 mb-3 grid grid-cols-2 gap-2">
         <button
           type="button"
@@ -233,7 +230,6 @@ export default function CustomerDetail({
         </button>
       </div>
 
-      {/* Tabs */}
       <div className="px-4 mb-3">
         <div className="flex bg-gray-100 rounded-xl p-1">
           {[
@@ -256,7 +252,6 @@ export default function CustomerDetail({
         </div>
       </div>
 
-      {/* Tab Content */}
       <div className="px-4">
         {activeTab === "bills" && (
           <BillsList customerId={customer.id} />
@@ -401,7 +396,6 @@ export default function CustomerDetail({
         )}
       </div>
 
-      {/* Payment Modal */}
       {showPaymentModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowPaymentModal(false)} />
@@ -446,7 +440,6 @@ export default function CustomerDetail({
                 />
               </div>
 
-              {/* Quick Amount Buttons */}
               <div className="flex gap-2 flex-wrap">
                 {[50, 100, 200, 500, 1000].map((amt) => (
                   <button
@@ -484,7 +477,6 @@ export default function CustomerDetail({
                 />
               </div>
 
-              {/* Balance Preview */}
               <div className="bg-green-50 rounded-xl p-3 text-sm space-y-1">
                 <div className="flex justify-between">
                   <span className="text-green-700">वर्तमान बकाया:</span>

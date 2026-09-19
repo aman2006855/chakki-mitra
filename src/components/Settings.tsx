@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Save, Download, Upload, RefreshCw } from "lucide-react";
+import { api } from "@/lib/api";
 
 interface SettingsData {
   shopName: string;
@@ -25,15 +26,9 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
 
   const handleSave = async () => {
     try {
-      await fetch("/api/settings", {
+      await api("/api/settings", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          shopName,
-          shopPhone,
-          attaRate,
-          daliaRate,
-        }),
+        body: JSON.stringify({ shopName, shopPhone, attaRate, daliaRate }),
       });
       setMessage("✅ सेटिंग सेव हो गई!");
       onUpdate();
@@ -46,16 +41,16 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
   const handleExport = async () => {
     try {
       const [customersRes, transactionsRes, paymentsRes, settingsRes] = await Promise.all([
-        fetch("/api/customers"),
-        fetch("/api/transactions"),
-        fetch("/api/payments"),
-        fetch("/api/settings"),
+        api("/api/customers").then((r) => r.json()),
+        api("/api/transactions").then((r) => r.json()),
+        api("/api/payments").then((r) => r.json()),
+        api("/api/settings").then((r) => r.json()),
       ]);
       const data = {
-        customers: await customersRes.json(),
-        transactions: await transactionsRes.json(),
-        payments: await paymentsRes.json(),
-        settings: await settingsRes.json(),
+        customers: customersRes,
+        transactions: transactionsRes,
+        payments: paymentsRes,
+        settings: settingsRes,
         exportedAt: new Date().toISOString(),
       };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -100,7 +95,6 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
         </div>
       )}
 
-      {/* Business Profile */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">🏪 बिज़नेस प्रोफाइल</h3>
         <div className="space-y-3">
@@ -126,7 +120,6 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
         </div>
       </div>
 
-      {/* Rate Card */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">💰 रेट कार्ड</h3>
         <div className="space-y-3">
@@ -157,7 +150,6 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
         </div>
       </div>
 
-      {/* Save Button */}
       <button
         type="button"
         onClick={handleSave}
@@ -167,7 +159,6 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
         सेटिंग सेव करें
       </button>
 
-      {/* Data Backup */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">💾 डेटा बैकअप</h3>
         <div className="space-y-3">
@@ -192,11 +183,10 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
         </div>
       </div>
 
-      {/* Logout */}
       <button
         type="button"
-        onClick={async () => {
-          await fetch("/api/auth/session", { method: "POST" });
+        onClick={() => {
+          try { localStorage.removeItem("chakki_mitra_token"); } catch {}
           window.location.href = "/login";
         }}
         className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-red-200 text-red-600 font-semibold active:bg-red-50"
@@ -204,7 +194,6 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
         🚪 लॉगआउट
       </button>
 
-      {/* App Info */}
       <div className="text-center text-xs text-gray-400 py-4">
         <div className="font-medium">चक्की मित्र v1.0 (MVP)</div>
         <div className="mt-0.5">आटा चक्की का डिजिटल बहीखाता 📖</div>

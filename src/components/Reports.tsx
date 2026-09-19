@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { api } from "@/lib/api";
 
 interface DailyData {
   day: string;
@@ -20,11 +21,10 @@ export default function Reports() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/reports"),
-      fetch("/api/dashboard"),
+      api("/api/reports").then((r) => r.json()),
+      api("/api/dashboard").then((r) => r.json()),
     ])
-      .then(async ([reports, dash]) => {
-        const [reportsData, dashData] = await Promise.all([reports.json(), dash.json()]);
+      .then(([reportsData, dashData]) => {
         setDailyData(reportsData.dailyData || []);
         setDashboard(dashData);
       })
@@ -59,7 +59,6 @@ export default function Reports() {
     <div className="px-4 py-4 space-y-5">
       <h2 className="text-lg font-bold text-gray-900">📊 रिपोर्ट और एनालिटिक्स</h2>
 
-      {/* Dashboard Summary */}
       {dashboard && (
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-white rounded-xl border border-gray-200 p-3 shadow-sm">
@@ -86,7 +85,6 @@ export default function Reports() {
         </div>
       )}
 
-      {/* Pie Chart */}
       {pieData.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">🥧 आटा vs दलिया</h3>
@@ -114,7 +112,6 @@ export default function Reports() {
         </div>
       )}
 
-      {/* Bar Chart */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">📊 दैनिक बिक्री (पिछले 7 दिन)</h3>
         {barData.length > 0 ? (
@@ -138,7 +135,6 @@ export default function Reports() {
         )}
       </div>
 
-      {/* Transaction Summary */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">📋 सारांश</h3>
         {dashboard && (

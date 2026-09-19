@@ -1,20 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { api } from "@/lib/api";
 
-function setSession(userId: number, name: string) {
-  const session = JSON.stringify({ userId, name });
-  const encoded = encodeURIComponent(session);
-  document.cookie = `session=${encoded}; path=/; max-age=2592000; SameSite=Lax`;
-  try { localStorage.setItem("chakki_mitra_session", session); } catch {}
-}
-
-function hasSession() {
+function getToken(): string | null {
   try {
-    if (document.cookie.includes("session=")) return true;
-    if (localStorage.getItem("chakki_mitra_session")) return true;
-  } catch {}
-  return false;
+    return localStorage.getItem("chakki_mitra_token");
+  } catch {
+    return null;
+  }
 }
 
 export default function LoginPage() {
@@ -27,15 +21,16 @@ export default function LoginPage() {
 
   useEffect(() => {
     async function checkAuth() {
-      if (!hasSession()) {
+      const token = getToken();
+      if (!token) {
         setLoading(false);
         return;
       }
       try {
-        const res = await fetch("/api/auth/session", { credentials: "same-origin" });
+        const res = await api("/api/auth/session");
         const data = await res.json();
         if (data.auth) {
-          const settingsRes = await fetch("/api/settings", { credentials: "same-origin" });
+          const settingsRes = await api("/api/settings");
           const settings = await settingsRes.json();
           if (settings.isRegistered) {
             window.location.href = "/";
@@ -75,19 +70,20 @@ export default function LoginPage() {
     
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/email", {
+      const data = await api("/api/auth/email", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, action: activeTab }),
+      }).then((r) => {
+        if (!r.ok) throw new Error("Request failed");
+        return r.json();
       });
-      const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.error || "Request failed");
-      }
-      
-      setSession(data.userId, data.name);
-      
+
+      if (data.error) throw new Error(data.error);
+
+      try {
+        localStorage.setItem("chakki_mitra_token", data.token);
+      } catch {}
+
       setTimeout(() => {
         if (data.isRegistered) {
           window.location.href = "/";
@@ -127,7 +123,6 @@ export default function LoginPage() {
 
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
           
-          {/* Tabs */}
           <div className="flex border-b border-gray-200">
             <button
               onClick={() => { setActiveTab("login"); setErrorMsg(""); }}

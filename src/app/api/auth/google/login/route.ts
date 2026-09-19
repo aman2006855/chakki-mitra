@@ -1,7 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { options as corsOptions } from "@/lib/cors";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
-const REDIRECT_URI = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/auth/google/callback`;
+const REDIRECT_URI = `${process.env.NEXT_PUBLIC_BASE_URL || "https://chakki-mitra.vercel.app"}/api/auth/google/callback`;
+
+export function OPTIONS() { return corsOptions(); }
 
 export async function GET() {
   const state = crypto.randomUUID();
@@ -14,7 +17,6 @@ export async function GET() {
   url.searchParams.set("prompt", "select_account");
   url.searchParams.set("state", state);
 
-  // Store state in response cookie for validation
   const response = NextResponse.redirect(url.toString());
   response.cookies.set("oauth_state", state, { httpOnly: true, maxAge: 300 });
   return response;

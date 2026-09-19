@@ -1,29 +1,22 @@
-import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { customers } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
-import { cookies } from "next/headers";
+import { getUserIdFromRequest } from "@/lib/auth";
+import { ok, err, options } from "@/lib/cors";
 
-function getUserId() {
-  const c = typeof document !== "undefined" ? null : null;
-  return null;
+export function OPTIONS() { return options(); }
+
+export async function GET(request: Request) {
+  const userId = getUserIdFromRequest(request);
+  if (!userId) return err("unauthorized", 401);
+  const data = await db.select().from(customers).where(eq(customers.userId, userId)).orderBy(desc(customers.createdAt));
+  return ok(data);
 }
 
-export async function GET() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session");
-  if (!sessionCookie) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const session = JSON.parse(sessionCookie.value);
-  const data = await db.select().from(customers).where(eq(customers.userId, session.userId)).orderBy(desc(customers.createdAt));
-  return NextResponse.json(data);
-}
-
-export async function POST(req: Request) {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session");
-  if (!sessionCookie) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const session = JSON.parse(sessionCookie.value);
-  const body = await req.json();
-  const [row] = await db.insert(customers).values({ ...body, userId: session.userId }).returning();
-  return NextResponse.json(row);
+export async function POST(request: Request) {
+  const userId = getUserIdFromRequest(request);
+  if (!userId) return err("unauthorized", 401);
+  const body = await request.json();
+  const [row] = await db.insert(customers).values({ ...body, userId }).returning();
+  return ok(row);
 }

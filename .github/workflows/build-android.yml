@@ -43,13 +43,8 @@ jobs:
           fi
           npm ci
 
-      - name: Build Next.js static export (no DB push)
+      - name: Build Next.js static export
         run: npm run build:apk
-
-      - name: Prepare web directory for Capacitor
-        run: |
-          mkdir -p out
-          echo '<!DOCTYPE html><html><head><title>Chakki Mitra</title></head><body></body></html>' > out/index.html
 
       - name: Install Capacitor CLI
         run: npm install -g @capacitor/cli@6.2.0

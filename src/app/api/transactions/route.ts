@@ -1,25 +1,22 @@
-import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { transactions } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
-import { cookies } from "next/headers";
+import { getUserIdFromRequest } from "@/lib/auth";
+import { ok, err, options } from "@/lib/cors";
 
-async function getSession() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session");
-  if (!sessionCookie) throw new Error("unauthorized");
-  return JSON.parse(sessionCookie.value);
+export function OPTIONS() { return options(); }
+
+export async function GET(request: Request) {
+  const userId = getUserIdFromRequest(request);
+  if (!userId) return err("unauthorized", 401);
+  const data = await db.select().from(transactions).where(eq(transactions.userId, userId)).orderBy(desc(transactions.createdAt)).limit(100);
+  return ok(data);
 }
 
-export async function GET() {
-  const session = await getSession();
-  const data = await db.select().from(transactions).where(eq(transactions.userId, session.userId)).orderBy(desc(transactions.createdAt)).limit(100);
-  return NextResponse.json(data);
-}
-
-export async function POST(req: Request) {
-  const session = await getSession();
-  const body = await req.json();
-  const row = await db.insert(transactions).values({ ...body, userId: session.userId }).returning();
-  return NextResponse.json(row[0]);
+export async function POST(request: Request) {
+  const userId = getUserIdFromRequest(request);
+  if (!userId) return err("unauthorized", 401);
+  const body = await request.json();
+  const row = await db.insert(transactions).values({ ...body, userId }).returning();
+  return ok(row[0]);
 }

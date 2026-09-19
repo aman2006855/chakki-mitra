@@ -4,13 +4,8 @@ const config: CapacitorConfig = {
   appId: 'com.chakkimitra.app',
   appName: 'चक्की मित्र',
   webDir: 'out',
-  server: {
-    url: 'https://chakki-mitra.vercel.app',
-    cleartext: false,
-    androidScheme: 'https',
-  },
   android: {
-    allowMixedContent: false,
+    allowMixedContent: true,
     captureInput: true,
     webContentsDebuggingEnabled: false,
   },

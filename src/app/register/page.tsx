@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Check, ChevronRight, ChevronLeft, User, Store, Phone, Wheat } from "lucide-react";
+import { api } from "@/lib/api";
 
 type Step = {
   id: number;
@@ -37,9 +38,13 @@ export default function RegisterPage() {
 
   useEffect(() => {
     async function checkAuth() {
-      const res = await fetch("/api/auth/session");
-      const data = await res.json();
-      if (!data.auth) {
+      try {
+        const res = await api("/api/auth/session");
+        const data = await res.json();
+        if (!data.auth) {
+          window.location.href = "/login";
+        }
+      } catch {
         window.location.href = "/login";
       }
     }
@@ -71,24 +76,17 @@ export default function RegisterPage() {
     setSaving(true);
     try {
       const body = { ...values, isRegistered: true };
-      console.log("[register] submitting:", JSON.stringify(body));
-
-      // Save to localStorage IMMEDIATELY before redirect
       try {
         localStorage.setItem("chakki_mitra_settings", JSON.stringify(body));
       } catch {}
 
-      // Also save to server
-      const res = await fetch("/api/settings", {
+      const res = await api("/api/settings", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
         body: JSON.stringify(body),
       });
       const result = await res.json();
       console.log("[register] response:", JSON.stringify(result), "status:", res.status);
 
-      // Force full page reload
       setTimeout(() => { window.location.href = "/"; }, 200);
     } catch (e) {
       console.error("[register] error:", e);
@@ -100,13 +98,11 @@ export default function RegisterPage() {
   if (showWelcome) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-500 to-amber-400 flex flex-col items-center justify-center p-6 relative overflow-hidden">
-        {/* Decorative elements */}
         <div className="absolute top-0 left-0 w-32 h-32 bg-orange-400 rounded-full mix-blend-multiply filter blur-2xl opacity-70 animate-blob" />
         <div className="absolute top-0 right-0 w-32 h-32 bg-amber-300 rounded-full mix-blend-multiply filter blur-2xl opacity-70 animate-blob animation-delay-2000" />
         <div className="absolute -bottom-8 left-20 w-32 h-32 bg-orange-600 rounded-full mix-blend-multiply filter blur-2xl opacity-70 animate-blob animation-delay-4000" />
 
         <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center relative z-10 border border-white/20">
-          {/* Om symbol or Kalash */}
           <div className="w-20 h-20 mx-auto bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-4xl mb-6 shadow-inner">
             ॐ
           </div>
@@ -146,12 +142,10 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-500 to-amber-400 flex flex-col">
-      {/* Progress Bar */}
       <div className="w-full bg-black/20 h-1.5">
         <div className="bg-white h-1.5 transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
       </div>
 
-      {/* Step Indicator */}
       <div className="px-6 pt-6 pb-2">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-orange-100 text-sm font-medium">
@@ -170,19 +164,15 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 flex items-center justify-center px-6 py-8">
         <div className="w-full max-w-sm">
-          {/* Step Icon */}
           <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-6">
             <step.icon className="w-8 h-8 text-white" />
           </div>
 
-          {/* Step Label */}
           <h2 className="text-2xl font-bold text-white text-center mb-2">{step.label}</h2>
           <p className="text-orange-100 text-center text-sm mb-8">{step.hint}</p>
 
-          {/* Input */}
           <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
             <input
               type={step.type}
@@ -201,7 +191,6 @@ export default function RegisterPage() {
             )}
           </div>
 
-          {/* Navigation */}
           <div className="flex gap-3">
             {currentStep > 0 && (
               <button
@@ -232,7 +221,6 @@ export default function RegisterPage() {
             </button>
           </div>
 
-          {/* Skip option for shop phone */}
           {step.key === "shopPhone" && (
             <button
               onClick={() => setCurrentStep((s) => s + 1)}
@@ -244,7 +232,6 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* Bottom Spacing */}
       <div className="h-8" />
     </div>
   );

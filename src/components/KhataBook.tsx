@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Plus, Phone, MessageCircle, ChevronRight, Search, Edit2 } from "lucide-react";
 import AddCustomer from "./AddCustomer";
 import CustomerDetail from "./CustomerDetail";
+import { api } from "@/lib/api";
 
 interface CustomerWithDues {
   id: number;
@@ -34,7 +35,7 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/customers/detail");
+      const res = await api("/api/customers/detail");
       if (res.ok) {
         const data = await res.json();
         setCustomerList(data);
@@ -66,7 +67,6 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
 
   return (
     <div className="px-4 py-4 space-y-4">
-      {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-red-50 border border-red-200 rounded-xl p-3">
           <div className="text-xs text-red-600 font-medium">कुल बकाया</div>
@@ -78,7 +78,6 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
         </div>
       </div>
 
-      {/* Search + Add */}
       <div className="flex gap-2">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -99,7 +98,6 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
         </button>
       </div>
 
-      {/* Customer List */}
       {loading ? (
         <div className="text-center py-12 text-gray-400">लोड हो रहा है...</div>
       ) : filtered.length === 0 ? (
@@ -170,14 +168,12 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
         </div>
       )}
 
-      {/* Add Customer Modal */}
       <AddCustomer
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSave={async (data) => {
-          await fetch("/api/customers", {
+          await api("/api/customers", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
           });
           fetchCustomers();

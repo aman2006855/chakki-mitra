@@ -8,6 +8,7 @@ import QuickEntry from "@/components/QuickEntry";
 import KhataBook from "@/components/KhataBook";
 import Reports from "@/components/Reports";
 import Settings from "@/components/Settings";
+import { api } from "@/lib/api";
 
 type Tab = "home" | "khata" | "reports" | "settings";
 
@@ -38,22 +39,17 @@ export default function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const initialized = useRef(false);
 
-  // Load initial data ONCE
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
 
     (async () => {
-      // First try server API
       let data: any;
       try {
-        const res = await fetch("/api/settings", { credentials: "same-origin" });
-        if (res.ok) {
-          data = await res.json();
-        }
+        const res = await api("/api/settings");
+        if (res.ok) data = await res.json();
       } catch {}
 
-      // Fallback to localStorage
       if (!data) {
         try {
           const ls = localStorage.getItem("chakki_mitra_settings");
@@ -71,13 +67,12 @@ export default function App() {
       }
 
       try {
-        const c = await fetch("/api/customers", { credentials: "same-origin" });
+        const c = await api("/api/customers");
         if (c.ok) setCustomers(await c.json());
       } catch {}
     })();
   }, []);
 
-  // Redirect if not authenticated or not registered
   useEffect(() => {
     if (loading) return;
     if (!user) {
@@ -94,7 +89,7 @@ export default function App() {
     setRefreshKey((k) => k + 1);
     (async () => {
       try {
-        const s = await fetch("/api/settings", { credentials: "same-origin" });
+        const s = await api("/api/settings");
         if (s.ok) {
           const data = await s.json();
           setSettings({
@@ -103,12 +98,11 @@ export default function App() {
             attaRate: data.attaRate || "5",
             daliaRate: data.daliaRate || "8",
           });
-          // Also save to localStorage
           try { localStorage.setItem("chakki_mitra_settings", JSON.stringify(data)); } catch {}
         }
       } catch {}
       try {
-        const c = await fetch("/api/customers", { credentials: "same-origin" });
+        const c = await api("/api/customers");
         if (c.ok) setCustomers(await c.json());
       } catch {}
     })();

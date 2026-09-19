@@ -1,19 +1,14 @@
-import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { transactions } from "@/db/schema";
-import { sql, eq } from "drizzle-orm";
-import { cookies } from "next/headers";
+import { sql } from "drizzle-orm";
+import { getUserIdFromRequest } from "@/lib/auth";
+import { ok, err, options } from "@/lib/cors";
 
-async function getSession() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session");
-  if (!sessionCookie) throw new Error("unauthorized");
-  return JSON.parse(sessionCookie.value);
-}
+export function OPTIONS() { return options(); }
 
-export async function GET() {
-  const session = await getSession();
-  const userId = session.userId;
+export async function GET(request: Request) {
+  const userId = getUserIdFromRequest(request);
+  if (!userId) return err("unauthorized", 401);
 
   const dailyData = await db.execute(sql`
     SELECT
@@ -31,7 +26,7 @@ export async function GET() {
     LIMIT 14
   `);
 
-  return NextResponse.json({
+  return ok({
     dailyData: ((dailyData as any).rows || []).map((r: any) => ({
       day: r.day,
       atta: parseFloat(r.atta_amount?.toString() || "0"),

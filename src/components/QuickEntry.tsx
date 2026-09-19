@@ -5,6 +5,7 @@ import { Search, Plus, Minus, Save, UserPlus, Clock, ChevronRight } from "lucide
 import AddCustomer from "./AddCustomer";
 import BackgroundSms from "@/plugins/background-sms";
 import { isNativePlatform } from "@/lib/capacitor";
+import { api } from "@/lib/api";
 
 interface SettingsData {
   shopName: string;
@@ -74,7 +75,7 @@ export default function QuickEntry({
 
   const fetchDashboard = async () => {
     try {
-      const res = await fetch("/api/dashboard");
+      const res = await api("/api/dashboard");
       if (res.ok) setDashboard(await res.json());
     } catch (e) {
       console.error(e);
@@ -83,7 +84,7 @@ export default function QuickEntry({
 
   const fetchRecent = async () => {
     try {
-      const res = await fetch("/api/transactions");
+      const res = await api("/api/transactions");
       if (res.ok) {
         const txns = await res.json();
         const withCustomerNames = txns.map((t: any) => ({
@@ -120,9 +121,8 @@ export default function QuickEntry({
 
     setSaving(true);
     try {
-      const res = await fetch("/api/transactions", {
+      const res = await api("/api/transactions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customerId: Number(customerId),
           productType: product,
@@ -169,9 +169,8 @@ export default function QuickEntry({
   };
 
   const handleAddCustomer = async (c: { name: string; phone: string; address: string }) => {
-    const res = await fetch("/api/customers", {
+    const res = await api("/api/customers", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(c),
     });
     if (res.ok) {
@@ -188,15 +187,10 @@ export default function QuickEntry({
     });
   };
 
-  const getProductLabel = (type: string) => {
-    return type === "atta" ? "🌾 आटा" : "🥣 दलिया";
-  };
-
   const formatCurrency = (n: number) => `₹${n.toFixed(0)}`;
 
   return (
     <div className="px-4 py-3 flex flex-col h-full space-y-4">
-      {/* Message Banner */}
       {message && (
         <div
           className={`px-4 py-2 rounded-lg text-sm font-medium text-center ${
@@ -209,7 +203,6 @@ export default function QuickEntry({
         </div>
       )}
 
-      {/* Daily Summary */}
       {dashboard && (
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-white rounded-xl border border-gray-200 p-3 text-center shadow-sm">
@@ -233,7 +226,6 @@ export default function QuickEntry({
         </div>
       )}
 
-      {/* Product Selection */}
       <div className="flex gap-3">
         <button
           type="button"
@@ -261,7 +253,6 @@ export default function QuickEntry({
         </button>
       </div>
 
-      {/* Customer Selection */}
       <div className="flex gap-3 relative">
         <button
           type="button"
@@ -283,7 +274,6 @@ export default function QuickEntry({
           <UserPlus className="w-5 h-5" />
         </button>
         
-        {/* Customer Search Dropdown */}
         {searchOpen && (
           <div className="absolute top-full mt-1 w-full z-10 bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
             <input
@@ -318,7 +308,6 @@ export default function QuickEntry({
         )}
       </div>
 
-      {/* Weight Input */}
       <div>
         <div className="flex items-center gap-3">
           <button
@@ -349,7 +338,6 @@ export default function QuickEntry({
             <Plus className="w-6 h-6 text-gray-700" />
           </button>
         </div>
-        {/* Quick weight buttons */}
         <div className="flex justify-between mt-3">
           {[2, 5, 10, 15, 20].map((w) => (
             <button
@@ -368,7 +356,6 @@ export default function QuickEntry({
         </div>
       </div>
 
-      {/* Amount Display */}
       <div className="bg-amber-50 rounded-xl p-3 border border-amber-200 flex items-center justify-between">
         <div className="text-xs text-amber-700 font-medium">
           {weightNum || 0}kg × ₹{rate}/kg
@@ -381,7 +368,6 @@ export default function QuickEntry({
         </div>
       </div>
 
-      {/* Notes */}
       <input
         type="text"
         value={notes}
@@ -390,7 +376,6 @@ export default function QuickEntry({
         className="w-full px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-sm outline-none focus:ring-2 focus:ring-amber-300 shadow-sm"
       />
 
-      {/* Payment Mode & Save Button */}
       <div className="flex gap-3 pt-1 pb-4">
         <button
           type="button"
@@ -432,7 +417,6 @@ export default function QuickEntry({
         </button>
       </div>
 
-      {/* Add Customer Modal */}
       <AddCustomer
         isOpen={showAddCustomer}
         onClose={() => setShowAddCustomer(false)}

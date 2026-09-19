@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { signToken } from "@/lib/auth";
 
 export async function POST(req: Request) {
   try {
@@ -31,7 +32,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
 
+    const token = signToken({ userId: user.id, name: user.name || "" });
+
     return NextResponse.json({
+      token,
       userId: user.id,
       name: user.name || "",
       isRegistered: user.isRegistered,
