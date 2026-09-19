@@ -20,6 +20,15 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Check signing secrets
+        id: check-signing
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "has_signing=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_signing=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install dependencies
         run: |
           if [ ! -f "package-lock.json" ]; then
@@ -59,7 +68,7 @@ jobs:
           cache: 'gradle'
 
       - name: Configure signing
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        if: steps.check-signing.outputs.has_signing == 'true'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -69,53 +78,34 @@ jobs:
           mkdir -p "$RUNNER_TEMP/android-signing"
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/android-signing/release.keystore"
           chmod 600 "$RUNNER_TEMP/android-signing/release.keystore"
-
           KEYSTORE_PATH=$(realpath "$RUNNER_TEMP/android-signing/release.keystore")
-
-          # Write gradle.properties with actual values (not env vars)
-          cat > android/gradle.properties << EOF
-          RELEASE_STORE_FILE=$KEYSTORE_PATH
-          RELEASE_STORE_PASSWORD=$KEYSTORE_PASSWORD
-          RELEASE_KEY_ALIAS=$KEY_ALIAS
-          RELEASE_KEY_PASSWORD=$KEY_PASSWORD
-          EOF
+          cd android
+          printf 'RELEASE_STORE_FILE=%s\n' "$KEYSTORE_PATH" > gradle.properties
+          printf 'RELEASE_STORE_PASSWORD=%s\n' "$KEYSTORE_PASSWORD" >> gradle.properties
+          printf 'RELEASE_KEY_ALIAS=%s\n' "$KEY_ALIAS" >> gradle.properties
+          printf 'RELEASE_KEY_PASSWORD=%s\n' "$KEY_PASSWORD" >> gradle.properties
 
       - name: Patch build.gradle for signing
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        if: steps.check-signing.outputs.has_signing == 'true'
         run: |
           cd android
-          # Inject signingConfigs and override buildTypes release
           python3 -c "
           import re
           with open('app/build.gradle', 'r') as f:
               content = f.read()
-
-          signing_block = '''
-              signingConfigs {
-                  release {
-                      storeFile file(RELEASE_STORE_FILE)
-                      storePassword RELEASE_STORE_PASSWORD
-                      keyAlias RELEASE_KEY_ALIAS
-                      keyPassword RELEASE_KEY_PASSWORD
-                  }
-              }
-          '''
-
-          # Add signingConfigs before buildTypes if not present
+          signing = '''    signingConfigs {
+        release {
+            storeFile file(RELEASE_STORE_FILE)
+            storePassword RELEASE_STORE_PASSWORD
+            keyAlias RELEASE_KEY_ALIAS
+            keyPassword RELEASE_KEY_PASSWORD
+        }
+    }
+'''
           if 'signingConfigs' not in content:
-              content = content.replace(
-                  'buildTypes {',
-                  signing_block + '    buildTypes {'
-              )
-
-          # Ensure buildTypes release uses signingConfig
+              content = content.replace('buildTypes {', signing + '    buildTypes {')
           if 'signingConfig signingConfigs.release' not in content:
-              content = re.sub(
-                  r'(buildTypes\s*\{\s*release\s*\{)',
-                  r'\1 signingConfig signingConfigs.release',
-                  content
-              )
-
+              content = re.sub(r'(release\s*\{)', r'\1 signingConfig signingConfigs.release', content)
           with open('app/build.gradle', 'w') as f:
               f.write(content)
           "
