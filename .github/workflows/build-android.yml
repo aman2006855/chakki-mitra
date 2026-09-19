@@ -39,6 +39,11 @@ jobs:
       - name: Build Next.js (skip db:push in CI)
         run: npx next build
 
+      - name: Prepare web directory for Capacitor
+        run: |
+          mkdir -p out
+          echo '<!DOCTYPE html><html><head><title>Chakki Mitra</title></head><body></body></html>' > out/index.html
+
       - name: Install Capacitor CLI
         run: npm install -g @capacitor/cli@6.2.0
 
