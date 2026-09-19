@@ -108,8 +108,10 @@ jobs:
           )
           if "signingConfigs" not in content:
               content = content.replace("buildTypes {", signing + "    buildTypes {")
+          # Apply release signing to BOTH release AND debug build types
           if "signingConfig signingConfigs.release" not in content:
               content = re.sub(r"(release\s*\{)", r"\1 signingConfig signingConfigs.release", content)
+              content = re.sub(r"(debug\s*\{)", r"\1 signingConfig signingConfigs.release", content)
           with open("app/build.gradle", "w") as f:
               f.write(content)
           PYEOF
