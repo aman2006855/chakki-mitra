@@ -89,26 +89,27 @@ jobs:
         if: steps.check-signing.outputs.has_signing == 'true'
         run: |
           cd android
-          python3 -c "
+          python3 << 'PYEOF'
           import re
-          with open('app/build.gradle', 'r') as f:
+          with open("app/build.gradle", "r") as f:
               content = f.read()
-          signing = '''    signingConfigs {
-        release {
-            storeFile file(RELEASE_STORE_FILE)
-            storePassword RELEASE_STORE_PASSWORD
-            keyAlias RELEASE_KEY_ALIAS
-            keyPassword RELEASE_KEY_PASSWORD
-        }
-    }
-'''
-          if 'signingConfigs' not in content:
-              content = content.replace('buildTypes {', signing + '    buildTypes {')
-          if 'signingConfig signingConfigs.release' not in content:
-              content = re.sub(r'(release\s*\{)', r'\1 signingConfig signingConfigs.release', content)
-          with open('app/build.gradle', 'w') as f:
+          signing = (
+              "    signingConfigs {\n"
+              "        release {\n"
+              "            storeFile file(RELEASE_STORE_FILE)\n"
+              "            storePassword RELEASE_STORE_PASSWORD\n"
+              "            keyAlias RELEASE_KEY_ALIAS\n"
+              "            keyPassword RELEASE_KEY_PASSWORD\n"
+              "        }\n"
+              "    }\n"
+          )
+          if "signingConfigs" not in content:
+              content = content.replace("buildTypes {", signing + "    buildTypes {")
+          if "signingConfig signingConfigs.release" not in content:
+              content = re.sub(r"(release\s*\{)", r"\1 signingConfig signingConfigs.release", content)
+          with open("app/build.gradle", "w") as f:
               f.write(content)
-          "
+          PYEOF
 
       - name: Get version code
         id: version
