@@ -67,14 +67,12 @@ export default function LoginPage() {
 
     setSubmitting(true);
     try {
-      const data = await api("/api/auth/email", {
+      const res = await api("/api/auth/email", {
         method: "POST",
         body: JSON.stringify({ email, password, action: activeTab }),
-      }).then((r) => {
-        if (!r.ok) throw new Error("Request failed");
-        return r.json();
       });
-
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
       if (data.error) throw new Error(data.error);
 
       try {
