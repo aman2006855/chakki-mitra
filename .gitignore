@@ -46,6 +46,7 @@ next-env.d.ts
 *.keystore
 *.jks
 keystore.properties
+gradle.properties
 GITHUB_SECRETS.txt
 
 # lockfile (generated fresh in CI)
