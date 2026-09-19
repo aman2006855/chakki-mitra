@@ -5,6 +5,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build Signed APK
@@ -160,14 +166,13 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Create GitHub Release
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && steps.check-signing.outputs.has_signing == 'true'
         uses: softprops/action-gh-release@v2
         with:
           name: Chakki Mitra v${{ steps.version.outputs.version_name }}
           tag_name: v${{ steps.version.outputs.version_name }}
           files: |
             android/app/build/outputs/apk/release/app-release.apk
-            android/app/build/outputs/apk/release/app-release-unsigned.apk
             android/app/build/outputs/apk/debug/app-debug.apk
           generate_release_notes: true
         env:
