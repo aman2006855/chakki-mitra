@@ -1,40 +1,44 @@
-import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { signToken } from "@/lib/auth";
+import { ok, err, options } from "@/lib/cors";
+
+export async function OPTIONS() {
+  return options();
+}
 
 export async function POST(req: Request) {
   try {
     const { email, password, action } = await req.json();
     if (!email || !password || !action) {
-      return NextResponse.json({ error: "Email, password and action are required" }, { status: 400 });
+      return err("Email, password and action are required", 400);
     }
 
     let [user] = await db.select().from(users).where(eq(users.email, email));
 
     if (action === "login") {
       if (!user) {
-        return NextResponse.json({ error: "यह अकाउंट मौजूद नहीं है। कृपया नया अकाउंट बनाएं।" }, { status: 404 });
+        return err("यह अकाउंट मौजूद नहीं है। कृपया नया अकाउंट बनाएं।", 404);
       }
       if (user.password !== password) {
-        return NextResponse.json({ error: "पासवर्ड गलत है।" }, { status: 401 });
+        return err("पासवर्ड गलत है।", 401);
       }
     } else if (action === "signup") {
       if (user) {
-        return NextResponse.json({ error: "यह ईमेल पहले से रजिस्टर्ड है। कृपया लॉगिन करें।" }, { status: 409 });
+        return err("यह ईमेल पहले से रजिस्टर्ड है। कृपया लॉगिन करें।", 409);
       }
       [user] = await db.insert(users).values({
         email,
         password,
       }).returning();
     } else {
-      return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+      return err("Invalid action", 400);
     }
 
     const token = signToken({ userId: user.id, name: user.name || "" });
 
-    return NextResponse.json({
+    return ok({
       token,
       userId: user.id,
       name: user.name || "",
@@ -42,6 +46,6 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("[email_auth_error]", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return err("Internal Server Error", 500);
   }
 }

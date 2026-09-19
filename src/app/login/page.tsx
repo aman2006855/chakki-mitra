@@ -15,7 +15,8 @@ function getToken(): string | null {
 
 export default function LoginPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,35 +27,28 @@ export default function LoginPage() {
     async function checkAuth() {
       const token = getToken();
       if (!token) {
-        setLoading(false);
+        setAuthChecked(true);
         return;
       }
       try {
         const res = await api("/api/auth/session");
         const data = await res.json();
         if (data.auth) {
-          const settingsRes = await api("/api/settings");
-          const settings = await settingsRes.json();
-          if (settings.isRegistered) {
-            router.replace("/");
-          } else {
-            router.replace("/register");
-          }
-        }
-      } catch {
-        try {
-          const lsSettings = localStorage.getItem("chakki_mitra_settings");
-          if (lsSettings) {
-            const settings = JSON.parse(lsSettings);
+          try {
+            const settingsRes = await api("/api/settings");
+            const settings = await settingsRes.json();
             if (settings.isRegistered) {
               router.replace("/");
             } else {
               router.replace("/register");
             }
+          } catch {
+            router.replace("/");
           }
-        } catch {}
-      }
-      setLoading(false);
+          return;
+        }
+      } catch {}
+      setAuthChecked(true);
     }
     checkAuth();
   }, []);
@@ -70,8 +64,8 @@ export default function LoginPage() {
       setErrorMsg("पासवर्ड आपस में मेल नहीं खाते");
       return;
     }
-    
-    setLoading(true);
+
+    setSubmitting(true);
     try {
       const data = await api("/api/auth/email", {
         method: "POST",
@@ -96,12 +90,12 @@ export default function LoginPage() {
       }, 300);
     } catch (e: any) {
       console.error("[auth] error:", e);
-      setErrorMsg(e.message);
-      setLoading(false);
+      setErrorMsg(e.message || "लॉगिन में समस्या हुई");
+      setSubmitting(false);
     }
   };
 
-  if (loading) {
+  if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-500 to-amber-400">
         <div className="text-white text-center animate-pulse">
@@ -208,10 +202,10 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={submitting}
                 className="w-full flex items-center justify-center py-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold text-lg hover:from-orange-600 hover:to-orange-700 active:scale-[0.98] shadow-md transition-all disabled:opacity-50"
               >
-                {activeTab === "login" ? "लॉगिन करें" : "नया अकाउंट बनाएं"}
+                {submitting ? "लोड हो रहा है..." : activeTab === "login" ? "लॉगिन करें" : "नया अकाउंट बनाएं"}
               </button>
             </form>
           </div>
