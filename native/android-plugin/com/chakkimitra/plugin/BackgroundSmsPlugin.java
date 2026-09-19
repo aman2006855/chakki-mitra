@@ -49,7 +49,7 @@ public class BackgroundSmsPlugin extends Plugin {
 
         if (!hasSmsPermission()) {
             pendingCall = call;
-            requestPermissionForAlias("sms", "smsCallback", null);
+            requestPermissionForAlias("sms", call);
             return;
         }
 
