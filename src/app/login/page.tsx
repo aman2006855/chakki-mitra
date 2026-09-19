@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
+import { API_BASE } from "@/lib/config";
 
 function getToken(): string | null {
   try {
@@ -148,7 +149,7 @@ export default function LoginPage() {
 
           <div className="p-6">
             <button
-              onClick={() => { window.location.href = "/api/auth/google/login"; }}
+              onClick={() => { window.location.href = `${API_BASE}/api/auth/google/login`; }}
               className="w-full flex items-center justify-center gap-3 py-3.5 rounded-xl border-2 border-gray-200 bg-white hover:bg-gray-50 active:bg-gray-100 transition-colors group mb-5"
             >
               <svg className="w-6 h-6" viewBox="0 0 24 24">

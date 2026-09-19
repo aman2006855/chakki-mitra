@@ -5,7 +5,7 @@
     "dev": "next dev",
     "build": "npm run db:push && next build",
     "build:api": "npm run db:push && next build",
-    "build:apk": "next build",
+    "build:apk": "node scripts/build-apk.js",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

@@ -44,6 +44,8 @@ jobs:
           npm ci
 
       - name: Build Next.js static export
+        env:
+          NEXT_PUBLIC_API_BASE_URL: https://chakki-mitra.vercel.app
         run: npm run build:apk
 
       - name: Install Capacitor CLI

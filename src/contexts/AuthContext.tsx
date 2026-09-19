@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { api } from "@/lib/api";
+import { API_BASE } from "@/lib/config";
 
 interface AuthContextType {
   user: { userId: number; name: string; isRegistered: boolean; shopName: string } | null;
@@ -92,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function login() {
-    window.location.href = "/api/auth/google/login";
+    window.location.href = `${API_BASE}/api/auth/google/login`;
   }
 
   function logout() {
