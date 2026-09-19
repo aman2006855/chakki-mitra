@@ -40,6 +40,21 @@ export default function App() {
   const [customers, setCustomers] = useState<CustomerData[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const initialized = useRef(false);
+  const authRedirected = useRef(false);
+
+  useEffect(() => {
+    if (loading || authRedirected.current) return;
+    if (!user) {
+      authRedirected.current = true;
+      router.replace("/login");
+      return;
+    }
+    if (!user.isRegistered) {
+      authRedirected.current = true;
+      router.replace("/register");
+      return;
+    }
+  }, [loading, user]);
 
   useEffect(() => {
     if (initialized.current) return;
@@ -110,13 +125,7 @@ export default function App() {
     );
   }
 
-  if (!user) {
-    router.replace("/login");
-    return null;
-  }
-
-  if (!user.isRegistered) {
-    router.replace("/register");
+  if (!user || !user.isRegistered) {
     return null;
   }
 
