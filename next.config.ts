@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "export",
+  output: process.env.NEXT_STATIC_EXPORT ? "export" : undefined,
   images: {
-    unoptimized: true,
+    unoptimized: !!process.env.NEXT_STATIC_EXPORT,
   },
 };
 

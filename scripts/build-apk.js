@@ -11,9 +11,12 @@ if (fs.existsSync(apiDir)) {
 }
 
 try {
+  // Set env var to enable static export in next.config.ts
+  const env = { ...process.env, NEXT_STATIC_EXPORT: "1" };
   const result = spawnSync("npx", ["next", "build"], {
     stdio: "inherit",
     shell: process.platform === "win32",
+    env,
   });
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
