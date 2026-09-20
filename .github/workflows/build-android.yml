@@ -106,10 +106,21 @@ jobs:
           chmod 600 "$RUNNER_TEMP/android-signing/release.keystore"
           KEYSTORE_PATH=$(realpath "$RUNNER_TEMP/android-signing/release.keystore")
           cd android
-          printf 'RELEASE_STORE_FILE=%s\n' "$KEYSTORE_PATH" > gradle.properties
-          printf 'RELEASE_STORE_PASSWORD=%s\n' "$KEYSTORE_PASSWORD" >> gradle.properties
-          printf 'RELEASE_KEY_ALIAS=%s\n' "$KEY_ALIAS" >> gradle.properties
-          printf 'RELEASE_KEY_PASSWORD=%s\n' "$KEY_PASSWORD" >> gradle.properties
+          {
+            printf 'RELEASE_STORE_FILE=%s\n' "$KEYSTORE_PATH"
+            printf 'RELEASE_STORE_PASSWORD=%s\n' "$KEYSTORE_PASSWORD"
+            printf 'RELEASE_KEY_ALIAS=%s\n' "$KEY_ALIAS"
+            printf 'RELEASE_KEY_PASSWORD=%s\n' "$KEY_PASSWORD"
+          } >> gradle.properties
+
+      - name: Enable AndroidX
+        run: |
+          cd android
+          touch gradle.properties
+          grep -qxF 'android.useAndroidX=true' gradle.properties || \
+            printf 'android.useAndroidX=true\n' >> gradle.properties
+          grep -qxF 'android.enableJetifier=true' gradle.properties || \
+            printf 'android.enableJetifier=true\n' >> gradle.properties
 
       - name: Patch build.gradle for signing
         if: steps.check-signing.outputs.has_signing == 'true'
