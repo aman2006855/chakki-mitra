@@ -56,6 +56,22 @@ jobs:
       - name: Add Android platform
         run: npx cap add android
 
+      - name: Configure Android SDK versions
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          path = Path("android/variables.gradle")
+          text = path.read_text()
+          replacements = {
+              "compileSdkVersion = 34": "compileSdkVersion = 35",
+              "targetSdkVersion = 34": "targetSdkVersion = 35",
+          }
+          for old, new in replacements.items():
+              text = text.replace(old, new)
+          path.write_text(text)
+          PY
+          grep -E 'compileSdkVersion|targetSdkVersion|minSdkVersion' android/variables.gradle
+
       - name: Add Android permissions
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
@@ -159,13 +175,13 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Build Debug APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Cleanup signing files
         if: always()
