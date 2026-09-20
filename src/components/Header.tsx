@@ -10,8 +10,8 @@ export default function Header({ shopName }: HeaderProps) {
   const { logout } = useAuth();
 
   return (
-    <header className="bg-gradient-to-r from-orange-600 to-amber-500 text-white shadow-lg">
-      <div className="px-4 pt-3 pb-2">
+    <header className="bg-gradient-to-r from-orange-600 to-amber-500 text-white shadow-lg relative z-30">
+      <div className="px-4 pt-3 pb-2" style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top, 0px))" }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Wheat className="w-6 h-6 text-amber-100" />
