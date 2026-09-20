@@ -44,6 +44,13 @@ public class BackgroundSmsPlugin extends Plugin {
             return;
         }
 
+        phoneNumber = cleanPhoneNumber(phoneNumber);
+
+        if (phoneNumber.length() < 10) {
+            call.reject("Invalid phone number: too short after cleaning");
+            return;
+        }
+
         if (getPermissionState("sms") != PermissionState.GRANTED) {
             requestPermissionForAlias("sms", call, "smsPermissionCallback");
             return;
@@ -57,7 +64,10 @@ public class BackgroundSmsPlugin extends Plugin {
         if (call == null) return;
 
         if (getPermissionState("sms") == PermissionState.GRANTED) {
-            sendSmsInternal(call, call.getString("phoneNumber"), call.getString("message"));
+            String phone = call.getString("phoneNumber");
+            String msg = call.getString("message");
+            if (phone != null) phone = cleanPhoneNumber(phone);
+            sendSmsInternal(call, phone, msg);
         } else {
             call.reject("SMS permission denied. Please enable it in Settings.");
         }
@@ -70,12 +80,34 @@ public class BackgroundSmsPlugin extends Plugin {
         call.resolve(ret);
     }
 
+    private String cleanPhoneNumber(String phone) {
+        phone = phone.replaceAll("[\\s\\-\\(\\)\\.]", "");
+        phone = phone.replaceAll("^(\\+91|91|0)", "");
+        return phone;
+    }
+
     private void sendSmsInternal(PluginCall call, String phoneNumber, String message) {
         try {
             SmsManager smsManager = SmsManager.getDefault();
 
-            if (message.length() > 160) {
-                java.util.ArrayList<String> parts = smsManager.divideMessage(message);
+            boolean isUnicode = !java.nio.charset.StandardCharsets.US_ASCII.newEncoder().canEncode(message);
+
+            if (isUnicode || message.length() > 70) {
+                java.util.ArrayList<String> parts;
+                if (isUnicode) {
+                    int maxLen = 67;
+                    parts = new java.util.ArrayList<>();
+                    while (message.length() > 0) {
+                        if (message.length() <= maxLen) {
+                            parts.add(message);
+                            break;
+                        }
+                        parts.add(message.substring(0, maxLen));
+                        message = message.substring(maxLen);
+                    }
+                } else {
+                    parts = smsManager.divideMessage(message);
+                }
                 smsManager.sendMultipartTextMessage(phoneNumber, null, parts, null, null);
             } else {
                 smsManager.sendTextMessage(phoneNumber, null, message, null, null);

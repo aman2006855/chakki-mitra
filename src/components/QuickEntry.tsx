@@ -153,10 +153,16 @@ export default function QuickEntry({
               `Mode: ${paymentLabel}`,
               `Dhanyavaad!`,
             ].join("\n");
-            BackgroundSms.sendSms({
-              phoneNumber: customer.phone,
-              message: smsText,
-            }).catch((e: any) => console.warn("SMS failed:", e));
+            try {
+              const smsResult = await BackgroundSms.sendSms({
+                phoneNumber: customer.phone,
+                message: smsText,
+              });
+              console.log("SMS sent:", smsResult);
+            } catch (e: any) {
+              console.error("SMS failed:", e);
+              setMessage({ type: "error", text: `⚠️ SMS नहीं भेजा: ${e?.message || e}` });
+            }
           }
         }
       } else {
