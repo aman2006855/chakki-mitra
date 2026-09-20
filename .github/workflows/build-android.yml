@@ -2,10 +2,8 @@ name: Build Android APK
 
 on:
   push:
-    branches: [main]
     tags:
       - 'v*'
-  workflow_dispatch:
 
 env:
   ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
