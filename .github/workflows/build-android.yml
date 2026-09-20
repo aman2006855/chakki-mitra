@@ -118,7 +118,12 @@ jobs:
               content = content.replace("buildTypes {", signing + "    buildTypes {")
           # Apply release signing to release build type only (debug keeps default keystore)
           if "signingConfig signingConfigs.release" not in content:
-              content = re.sub(r"(release\s*\{)", r"\1 signingConfig signingConfigs.release", content)
+              content, count = re.subn(
+                  r"(buildTypes\s*\{[\s\S]*?\brelease\s*\{)",
+                  r"\1\n            signingConfig signingConfigs.release",
+                  content,
+                  count=1,
+              )
           # Set debug applicationId to different package name
           debug_match = re.search(r"debug\s*\{([^}]*)\}", content, re.DOTALL)
           if debug_match and "applicationId" not in debug_match.group(1):
