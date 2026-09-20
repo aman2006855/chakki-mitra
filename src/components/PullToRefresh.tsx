@@ -17,7 +17,7 @@ export default function PullToRefresh({ onRefresh, children, threshold = 80 }: P
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const el = containerRef.current;
-    if (!el || el.scrollTop > 0 || refreshing) return;
+    if (!el || el.scrollTop > 1 || refreshing) return;
     startY.current = e.touches[0].clientY;
     isPulling.current = true;
   }, [refreshing]);
@@ -25,13 +25,14 @@ export default function PullToRefresh({ onRefresh, children, threshold = 80 }: P
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (!isPulling.current) return;
     const el = containerRef.current;
-    if (!el || el.scrollTop > 0) {
+    if (!el || el.scrollTop > 1) {
       isPulling.current = false;
       setPullDistance(0);
       return;
     }
     const diff = e.touches[0].clientY - startY.current;
     if (diff > 0) {
+      e.preventDefault();
       const dampened = Math.min(diff * 0.5, threshold * 1.5);
       setPullDistance(dampened);
     }
@@ -47,13 +48,12 @@ export default function PullToRefresh({ onRefresh, children, threshold = 80 }: P
       try {
         await onRefresh();
       } catch {}
-      await new Promise((r) => setTimeout(r, 400));
+      await new Promise((r) => setTimeout(r, 500));
       setRefreshing(false);
     }
     setPullDistance(0);
   }, [pullDistance, threshold, onRefresh]);
 
-  const spinnerRotation = pullDistance * 3;
   const showIndicator = pullDistance > 10 || refreshing;
 
   return (
@@ -62,24 +62,31 @@ export default function PullToRefresh({ onRefresh, children, threshold = 80 }: P
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className="flex-1 overflow-y-auto relative"
-      style={{ WebkitOverflowScrolling: "touch" }}
+      className="flex-1 relative"
+      style={{ WebkitOverflowScrolling: "touch", overflowY: "auto", overscrollBehaviorY: "contain" }}
     >
       <div
-        className="flex items-center justify-center overflow-hidden transition-none"
-        style={{ height: showIndicator ? pullDistance : 0, opacity: showIndicator ? Math.min(pullDistance / threshold, 1) : 0 }}
+        style={{
+          height: showIndicator ? pullDistance : 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transition: refreshing ? "none" : undefined,
+        }}
       >
         <div
-          className="w-7 h-7 border-3 border-orange-400 border-t-transparent rounded-full"
           style={{
-            transform: `rotate(${spinnerRotation}deg)`,
+            width: 28,
+            height: 28,
+            borderRadius: "50%",
+            border: "3px solid #fb923c",
+            borderTopColor: "transparent",
+            transform: `rotate(${pullDistance * 3}deg)`,
             animation: refreshing ? "spin 0.8s linear infinite" : "none",
           }}
         />
       </div>
-      <div style={{ transform: `translateY(${showIndicator ? 0 : -pullDistance}px)` }}>
-        {children}
-      </div>
+      <div>{children}</div>
     </div>
   );
 }
