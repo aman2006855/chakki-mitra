@@ -132,10 +132,10 @@ export default function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen max-w-lg mx-auto bg-gray-50 relative">
+    <div className="flex flex-col h-screen max-w-lg mx-auto bg-gray-50 relative" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
       <AutoUpdater />
-      <Header shopName={settings.shopName} />
       <PullToRefresh onRefresh={refreshData}>
+        <Header shopName={settings.shopName} />
         <main className="pb-20" key={refreshKey}>
           {tab === "home" && (
             <QuickEntry settings={settings} customers={customers} onSaved={refreshData} />

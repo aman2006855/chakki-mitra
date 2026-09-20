@@ -63,7 +63,7 @@ export default function PullToRefresh({ onRefresh, children, threshold = 80 }: P
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       className="flex-1 relative"
-      style={{ WebkitOverflowScrolling: "touch", overflowY: "auto", overscrollBehaviorY: "contain", zIndex: 10 }}
+      style={{ WebkitOverflowScrolling: "touch", overflowY: "auto", overscrollBehaviorY: "contain" }}
     >
       <div
         style={{

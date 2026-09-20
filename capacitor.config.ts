@@ -8,6 +8,7 @@ const config: CapacitorConfig = {
     allowMixedContent: true,
     captureInput: true,
     webContentsDebuggingEnabled: false,
+    backgroundColor: "#ea580c",
   },
   plugins: {
     BackgroundSms: {},

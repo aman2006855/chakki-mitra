@@ -10,7 +10,7 @@ export default function Header({ shopName }: HeaderProps) {
   const { logout } = useAuth();
 
   return (
-    <header className="sticky top-0 z-30 bg-gradient-to-r from-orange-600 to-amber-500 text-white shadow-lg">
+    <header className="bg-gradient-to-r from-orange-600 to-amber-500 text-white shadow-lg">
       <div className="px-4 pt-3 pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
