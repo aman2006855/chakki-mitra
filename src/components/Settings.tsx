@@ -1,10 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Save, Download, Upload, RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { App } from "@capacitor/app";
+import { Browser } from "@capacitor/browser";
+
+const GITHUB_REPO = "aman2006855/chakki-mitra";
+const GITHUB_API = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
 
 interface SettingsData {
   shopName: string;
@@ -19,6 +24,20 @@ interface SettingsProps {
   customers: any[];
 }
 
+function parseVersion(v: string): [number, number, number] {
+  const clean = v.replace(/^v/, "").split("-")[0];
+  const parts = clean.split(".").map(Number);
+  return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
+}
+
+function isNewer(latest: string, current: string): boolean {
+  const [a, b, c] = parseVersion(latest);
+  const [x, y, z] = parseVersion(current);
+  if (a !== x) return a > x;
+  if (b !== y) return b > y;
+  return c > z;
+}
+
 export default function Settings({ settings, onUpdate }: SettingsProps) {
   const router = useRouter();
   const { logout } = useAuth();
@@ -27,6 +46,53 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
   const [attaRate, setAttaRate] = useState(settings.attaRate);
   const [daliaRate, setDaliaRate] = useState(settings.daliaRate);
   const [message, setMessage] = useState<string>("");
+  const [appVersion, setAppVersion] = useState("1.0.0");
+  const [latestVersion, setLatestVersion] = useState("");
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [downloadUrl, setDownloadUrl] = useState("");
+  const [checkingUpdate, setCheckingUpdate] = useState(true);
+
+  useEffect(() => {
+    getVersion();
+    checkUpdate();
+  }, []);
+
+  async function getVersion() {
+    try {
+      const info = await App.getInfo();
+      setAppVersion(info.version);
+    } catch {}
+  }
+
+  async function checkUpdate() {
+    setCheckingUpdate(true);
+    try {
+      const res = await fetch(GITHUB_API);
+      if (!res.ok) return;
+      const release = await res.json();
+      const tag = release.tag_name || "";
+      if (!tag) return;
+
+      const info = await App.getInfo();
+      if (isNewer(tag, info.version)) {
+        const apkAsset = (release.assets || []).find(
+          (a: any) => a.name.endsWith(".apk")
+        );
+        if (apkAsset) {
+          setLatestVersion(tag);
+          setDownloadUrl(apkAsset.browser_download_url);
+          setUpdateAvailable(true);
+        }
+      }
+    } catch {}
+    setCheckingUpdate(false);
+  }
+
+  async function handleDownloadUpdate() {
+    if (downloadUrl) {
+      await Browser.open({ url: downloadUrl });
+    }
+  }
 
   const handleSave = async () => {
     try {
@@ -198,8 +264,34 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
         🚪 लॉगआउट
       </button>
 
-      <div className="text-center text-xs text-gray-400 py-4">
-        <div className="font-medium">चक्की मित्र v1.0 (MVP)</div>
+      <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">📱 ऐप जानकारी</h3>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-600">वर्शन</span>
+            <span className="font-mono font-medium text-gray-900">v{appVersion}</span>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-600">अपडेट</span>
+            {checkingUpdate ? (
+              <span className="text-gray-400 text-xs">चेक हो रहा है...</span>
+            ) : updateAvailable ? (
+              <button
+                onClick={handleDownloadUpdate}
+                className="flex items-center gap-1 text-orange-600 font-semibold text-xs active:text-orange-800"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                v{latestVersion} उपलब्ध
+              </button>
+            ) : (
+              <span className="text-green-600 text-xs font-medium">✅ अपडेटेड</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="text-center text-xs text-gray-400 py-2">
+        <div className="font-medium">चक्की मित्र</div>
         <div className="mt-0.5">आटा चक्की का डिजिटल बहीखाता 📖</div>
       </div>
     </div>

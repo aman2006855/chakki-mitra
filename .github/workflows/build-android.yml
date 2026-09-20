@@ -150,6 +150,7 @@ jobs:
           sed -i "s/versionName \"[^\"]*\"/versionName \"${{ steps.version.outputs.version_name }}\"/" app/build.gradle
 
       - name: Build Release APK
+        if: steps.check-signing.outputs.has_signing == 'true'
         run: |
           cd android
           chmod +x gradlew
@@ -158,6 +159,7 @@ jobs:
       - name: Build Debug APK
         run: |
           cd android
+          chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
       - name: Cleanup signing files
@@ -165,17 +167,11 @@ jobs:
         run: rm -rf "$RUNNER_TEMP/android-signing"
 
       - name: Upload Release APK
+        if: steps.check-signing.outputs.has_signing == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: chakki-mitra-release
           path: android/app/build/outputs/apk/release/app-release.apk
-          if-no-files-found: warn
-
-      - name: Upload Unsigned Release APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: chakki-mitra-release-unsigned
-          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
           if-no-files-found: warn
 
       - name: Upload Debug APK
