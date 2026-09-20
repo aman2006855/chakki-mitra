@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import PullToRefresh from "@/components/PullToRefresh";
+import AutoUpdater from "@/components/AutoUpdater";
 import QuickEntry from "@/components/QuickEntry";
 import KhataBook from "@/components/KhataBook";
 import Reports from "@/components/Reports";
@@ -132,6 +133,7 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-screen max-w-lg mx-auto bg-gray-50 relative">
+      <AutoUpdater />
       <Header shopName={settings.shopName} />
       <PullToRefresh onRefresh={refreshData}>
         <main className="pb-20" key={refreshKey}>

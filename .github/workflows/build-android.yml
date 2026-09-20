@@ -3,6 +3,8 @@ name: Build Android APK
 on:
   push:
     branches: [main]
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 env:
@@ -53,6 +55,11 @@ jobs:
 
       - name: Add Android platform
         run: npx cap add android
+
+      - name: Add Android permissions
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          sed -i '/<application/i\    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />' "$MANIFEST"
 
       - name: Copy custom SMS plugin
         run: |
@@ -125,9 +132,16 @@ jobs:
       - name: Get version code
         id: version
         run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            TAG_NAME="${{ github.ref_name }}"
+            VERSION_NAME="${TAG_NAME#v}"
+          else
+            VERSION_NAME=$(date +%Y.%-m.%-d)
+          fi
           VERSION_CODE=$(($(date +%-y) * 10000 + $(date +%-m) * 100 + $(date +%-d)))
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
-          echo "version_name=$(date +%Y.%-m.%-d)" >> "$GITHUB_OUTPUT"
+          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "tag_name=v$VERSION_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Update version in build.gradle
         run: |
@@ -171,11 +185,11 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Create GitHub Release
-        if: github.ref == 'refs/heads/main' && steps.check-signing.outputs.has_signing == 'true'
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           name: Chakki Mitra v${{ steps.version.outputs.version_name }}
-          tag_name: v${{ steps.version.outputs.version_name }}
+          tag_name: ${{ steps.version.outputs.tag_name }}
           files: |
             android/app/build/outputs/apk/release/app-release.apk
             android/app/build/outputs/apk/debug/app-debug.apk
