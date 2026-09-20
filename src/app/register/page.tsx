@@ -181,8 +181,12 @@ export default function RegisterPage() {
                 setValues((v) => ({ ...v, [step.key]: e.target.value }));
                 setError("");
               }}
+              onInput={(e) => {
+                setValues((v) => ({ ...v, [step.key]: (e.target as HTMLInputElement).value }));
+              }}
               placeholder={step.placeholder}
               inputMode={step.inputMode as any}
+              autoComplete="off"
               className="w-full text-center text-2xl font-bold text-gray-900 outline-none placeholder:text-gray-300"
               autoFocus
             />

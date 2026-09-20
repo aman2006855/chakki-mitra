@@ -37,11 +37,18 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
-    if (!email || !password) {
+
+    const form = e.target as HTMLFormElement;
+    const emailInput = form.querySelector('input[type="email"]') as HTMLInputElement;
+    const passwordInput = form.querySelector('input[type="password"]') as HTMLInputElement;
+    const finalEmail = email || emailInput?.value || "";
+    const finalPassword = password || passwordInput?.value || "";
+
+    if (!finalEmail || !finalPassword) {
       setErrorMsg("ईमेल और पासवर्ड दोनों डालें");
       return;
     }
-    if (activeTab === "signup" && password !== confirmPassword) {
+    if (activeTab === "signup" && finalPassword !== confirmPassword) {
       setErrorMsg("पासवर्ड आपस में मेल नहीं खाते");
       return;
     }
@@ -50,7 +57,7 @@ export default function LoginPage() {
     try {
       const res = await api("/api/auth/email", {
         method: "POST",
-        body: JSON.stringify({ email, password, action: activeTab }),
+        body: JSON.stringify({ email: finalEmail, password: finalPassword, action: activeTab }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
@@ -145,7 +152,10 @@ export default function LoginPage() {
                   type="email"
                   placeholder="ईमेल (Email)"
                   value={email}
+                  autoComplete="email"
+                  inputMode="email"
                   onChange={(e) => setEmail(e.target.value)}
+                  onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-gray-50/50 focus:bg-white transition-colors"
                 />
               </div>
@@ -154,7 +164,9 @@ export default function LoginPage() {
                   type="password"
                   placeholder="पासवर्ड (Password)"
                   value={password}
+                  autoComplete="current-password"
                   onChange={(e) => setPassword(e.target.value)}
+                  onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-gray-50/50 focus:bg-white transition-colors"
                 />
               </div>
@@ -164,7 +176,9 @@ export default function LoginPage() {
                     type="password"
                     placeholder="पासवर्ड की पुष्टि (Confirm Password)"
                     value={confirmPassword}
+                    autoComplete="new-password"
                     onChange={(e) => setConfirmPassword(e.target.value)}
+                    onInput={(e) => setConfirmPassword((e.target as HTMLInputElement).value)}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-gray-50/50 focus:bg-white transition-colors"
                   />
                 </div>
