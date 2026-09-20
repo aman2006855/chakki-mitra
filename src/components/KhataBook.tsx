@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Phone, MessageCircle, ChevronRight, Search, Edit2 } from "lucide-react";
+import { Plus, Phone, MessageCircle, ChevronRight, Search, Edit2, Trash2 } from "lucide-react";
 import AddCustomer from "./AddCustomer";
 import CustomerDetail from "./CustomerDetail";
 import { api } from "@/lib/api";
@@ -27,6 +27,12 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithDues | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const [editingCustomer, setEditingCustomer] = useState<CustomerWithDues | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editAddress, setEditAddress] = useState("");
+  const [deletingCustomer, setDeletingCustomer] = useState<CustomerWithDues | null>(null);
 
   useEffect(() => {
     fetchCustomers();
@@ -54,6 +60,45 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
 
   const totalOutstanding = customerList.reduce((sum, c) => sum + c.dues, 0);
   const totalAdvance = customerList.reduce((sum, c) => sum + c.advance, 0);
+
+  const handleEdit = (c: CustomerWithDues) => {
+    setEditingCustomer(c);
+    setEditName(c.name);
+    setEditPhone(c.phone);
+    setEditAddress(c.address || "");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingCustomer || !editName.trim() || !editPhone.trim()) return;
+    try {
+      await api("/api/customers", {
+        method: "PUT",
+        body: JSON.stringify({
+          id: editingCustomer.id,
+          name: editName.trim(),
+          phone: editPhone.trim(),
+          address: editAddress.trim(),
+        }),
+      });
+      setEditingCustomer(null);
+      fetchCustomers();
+      onRefresh();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingCustomer) return;
+    try {
+      await api(`/api/customers?id=${deletingCustomer.id}`, { method: "DELETE" });
+      setDeletingCustomer(null);
+      fetchCustomers();
+      onRefresh();
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   if (selectedCustomer) {
     return (
@@ -137,7 +182,7 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100">
+              <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-gray-100">
                 <a
                   href={`tel:${c.phone}`}
                   className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-green-50 text-green-700 text-xs font-medium active:bg-green-100"
@@ -156,10 +201,24 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
                 </a>
                 <button
                   type="button"
+                  onClick={() => handleEdit(c)}
+                  className="flex items-center justify-center gap-1 py-2 px-2.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium active:bg-blue-100"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeletingCustomer(c)}
+                  className="flex items-center justify-center gap-1 py-2 px-2.5 rounded-lg bg-red-50 text-red-600 text-xs font-medium active:bg-red-100"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
                   onClick={() => setSelectedCustomer(c)}
                   className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-orange-50 text-orange-700 text-xs font-medium active:bg-orange-100"
                 >
-                  खाता देखें
+                  खाता
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -180,6 +239,95 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
           onRefresh();
         }}
       />
+
+      {/* Edit Customer Modal */}
+      {editingCustomer && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setEditingCustomer(null)} />
+          <div className="relative w-full max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl p-5">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">✏️ ग्राहक संपादित करें</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">नाम</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-orange-300"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">फ़ोन नंबर</label>
+                <input
+                  type="tel"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-orange-300"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">पता</label>
+                <input
+                  type="text"
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-orange-300"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingCustomer(null)}
+                  className="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-gray-600 font-semibold text-sm"
+                >
+                  रद्द करें
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEdit}
+                  className="flex-1 py-2.5 rounded-xl bg-orange-500 text-white font-semibold text-sm active:bg-orange-600"
+                >
+                  सेव करें
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setDeletingCustomer(null)} />
+          <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6 mx-4">
+            <div className="text-center">
+              <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Trash2 className="w-7 h-7 text-red-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">ग्राहक हटाएं?</h3>
+              <p className="text-sm text-gray-500">
+                <span className="font-semibold">{deletingCustomer.name}</span> का सारा डेटा मिटा दिया जाएगा। यह क्रिया वापस नहीं हो सकती।
+              </p>
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button
+                type="button"
+                onClick={() => setDeletingCustomer(null)}
+                className="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-gray-600 font-semibold text-sm"
+              >
+                रद्द करें
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-semibold text-sm active:bg-red-600"
+              >
+                हां, हटाएं
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
