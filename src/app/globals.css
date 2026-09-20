@@ -4,11 +4,13 @@
   * {
     -webkit-tap-highlight-color: transparent;
   }
+  html {
+    overscroll-behavior-y: none;
+  }
   body {
     font-family: system-ui, -apple-system, sans-serif;
-    overscroll-behavior: none;
+    overscroll-behavior-y: none;
   }
-  /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 4px;
   }
@@ -20,6 +22,11 @@
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+@keyframes pill-enter {
+  from { opacity: 0; transform: translateY(-20px) scale(0.8); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes blob {
