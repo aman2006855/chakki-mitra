@@ -222,7 +222,6 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag_name }}
           files: |
             android/app/build/outputs/apk/release/app-release.apk
-            android/app/build/outputs/apk/debug/app-debug.apk
           generate_release_notes: true
           fail_on_unmatched_files: false
         env:

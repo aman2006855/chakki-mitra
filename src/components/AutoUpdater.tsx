@@ -43,9 +43,9 @@ export default function AutoUpdater() {
       const tag = release.tag_name || "";
       if (!tag || !isNewer(tag, currentVersion)) return;
 
-      const apkAsset = (release.assets || []).find(
-        (a: any) => a.name.endsWith(".apk")
-      );
+      const apkAsset =
+        (release.assets || []).find((a: any) => a.name.includes("release") && a.name.endsWith(".apk")) ||
+        (release.assets || []).find((a: any) => a.name.endsWith(".apk"));
       if (!apkAsset) return;
 
       setLatestVersion(tag);
