@@ -149,6 +149,7 @@ export default function LoginPage() {
               <div>
                 <input
                   type="email"
+                  name="email"
                   placeholder="ईमेल (Email)"
                   value={email}
                   autoComplete="email"
@@ -161,6 +162,7 @@ export default function LoginPage() {
               <div>
                 <input
                   type="password"
+                  name="password"
                   placeholder="पासवर्ड (Password)"
                   value={password}
                   autoComplete="current-password"
@@ -171,9 +173,10 @@ export default function LoginPage() {
               </div>
               {activeTab === "signup" && (
                 <div>
-                  <input
-                    type="password"
-                    placeholder="पासवर्ड की पुष्टि (Confirm Password)"
+                    <input
+                      type="password"
+                      name="new-password"
+                      placeholder="पासवर्ड की पुष्टि (Confirm Password)"
                     value={confirmPassword}
                     autoComplete="new-password"
                     onChange={(e) => setConfirmPassword(e.target.value)}
