@@ -20,13 +20,18 @@ export default function Reports() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // NOTE: res.ok check zaroori hai — offline/401/503 par api() error-shape
+    // JSON ({error:...}) deta hai; bina check ke dashboard truthy set ho jata
+    // aur .toFixed() crash karke poora page gira deta hai (sab tabs mounted hain)
     Promise.all([
-      api("/api/reports").then((r) => r.json()),
-      api("/api/dashboard").then((r) => r.json()),
+      api("/api/reports").then((r) => (r.ok ? r.json().catch(() => null) : null)),
+      api("/api/dashboard").then((r) => (r.ok ? r.json().catch(() => null) : null)),
     ])
       .then(([reportsData, dashData]) => {
-        setDailyData(reportsData.dailyData || []);
-        setDashboard(dashData);
+        setDailyData(Array.isArray(reportsData?.dailyData) ? reportsData.dailyData : []);
+        setDashboard(
+          dashData && typeof dashData.totalSales === "number" ? dashData : null
+        );
       })
       .catch(console.error)
       .finally(() => setLoading(false));
