@@ -2,6 +2,12 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { useSyncPending } from "@/lib/use-sync-pending";
+
+function SyncProvider({ children }: { children: ReactNode }) {
+  useSyncPending();
+  return <>{children}</>;
+}
 
 export const metadata: Metadata = {
   title: "चक्की मित्र - Chakki Mitra",
@@ -22,7 +28,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         `}} />
       </head>
       <body className="bg-gray-50 text-gray-900 antialiased" style={{ backgroundColor: '#f9fafb', color: '#111827', minHeight: '100vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider><SyncProvider>{children}</SyncProvider></AuthProvider>
       </body>
     </html>
   );

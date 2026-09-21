@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Plus, Phone, MessageCircle, ChevronRight, Search, Edit2, Trash2 } from "lucide-react";
 import AddCustomer from "./AddCustomer";
 import CustomerDetail from "./CustomerDetail";
@@ -34,12 +34,18 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
   const [editAddress, setEditAddress] = useState("");
   const [deletingCustomer, setDeletingCustomer] = useState<CustomerWithDues | null>(null);
 
+  const refreshRef = useRef(0);
+
   useEffect(() => {
     fetchCustomers();
+  }, []);
+
+  useEffect(() => {
+    if (refreshRef.current > 0) fetchCustomers();
+    refreshRef.current++;
   }, [onRefresh]);
 
   const fetchCustomers = async () => {
-    setLoading(true);
     try {
       const res = await api("/api/customers/detail");
       if (res.ok) {
