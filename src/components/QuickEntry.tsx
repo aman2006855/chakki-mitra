@@ -105,7 +105,10 @@ export default function QuickEntry({
     msgTimerRef.current = setTimeout(() => setMessage(null), duration);
   };
 
+  const savingRef = useRef(false);
+
   const handleSave = async () => {
+    if (savingRef.current) return;
     if (!customerId) {
       showMessage({ type: "error", text: "⚠️ ग्राहक चुनें" });
       return;
@@ -119,6 +122,7 @@ export default function QuickEntry({
       return;
     }
 
+    savingRef.current = true;
     setSaving(true);
     try {
       const res = await api("/api/transactions", {
@@ -138,6 +142,8 @@ export default function QuickEntry({
         setWeight("");
         setPaymentMode(null);
         setNotes("");
+        setSaving(false);
+        savingRef.current = false;
         fetchDashboard();
         fetchRecent();
         onSaved();
@@ -153,24 +159,26 @@ export default function QuickEntry({
               `Mode: ${paymentLabel}`,
               `Dhanyavaad!`,
             ].join("\n");
-            try {
-              await BackgroundSms.sendSms({
-                phoneNumber: customer.phone,
-                message: smsText,
-              });
+            BackgroundSms.sendSms({
+              phoneNumber: customer.phone,
+              message: smsText,
+            }).then(() => {
               showMessage({ type: "success", text: "✅ SMS भेजा गया!" });
-            } catch (e: any) {
+            }).catch((e: any) => {
               showMessage({ type: "error", text: `⚠️ SMS नहीं भेजा: ${e?.message || "unknown"}` }, 5000);
-            }
+            });
           }
         }
       } else {
         showMessage({ type: "error", text: "❌ सेव नहीं हो पाई" });
+        setSaving(false);
+        savingRef.current = false;
       }
     } catch {
       showMessage({ type: "error", text: "❌ नेटवर्क एरर" });
+      setSaving(false);
+      savingRef.current = false;
     }
-    setSaving(false);
   };
 
   const handleAddCustomer = async (c: { name: string; phone: string; address: string }) => {

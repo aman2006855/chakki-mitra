@@ -105,8 +105,12 @@ export default function CustomerDetail({
     setLoading(false);
   };
 
+  const paymentSavingRef = useRef(false);
+
   const handlePayment = async () => {
+    if (paymentSavingRef.current) return;
     if (!paymentAmount || parseFloat(paymentAmount) <= 0) return;
+    paymentSavingRef.current = true;
     try {
       const res = await api("/api/payments", {
         method: "POST",
@@ -130,6 +134,7 @@ export default function CustomerDetail({
     } catch (e) {
       showToast({ type: "error", text: "❌ नेटवर्क एरर" });
     }
+    paymentSavingRef.current = false;
   };
 
   const getShopName = () => {
