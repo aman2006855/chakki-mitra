@@ -6,10 +6,14 @@
   }
   html {
     overscroll-behavior-y: none;
+    touch-action: manipulation;
+    -ms-content-zooming: none;
   }
   body {
     font-family: system-ui, -apple-system, sans-serif;
     overscroll-behavior-y: none;
+    touch-action: manipulation;
+    -ms-content-zooming: none;
   }
   ::-webkit-scrollbar {
     width: 4px;

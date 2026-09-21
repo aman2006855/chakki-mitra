@@ -7,6 +7,11 @@ import BackgroundSms from "@/plugins/background-sms";
 import { isNativePlatform } from "@/lib/capacitor";
 import { api } from "@/lib/api";
 
+let BackgroundTask: any = null;
+if (typeof window !== "undefined") {
+  import("@capacitor/background-task").then((m) => { BackgroundTask = m.BackgroundTask; });
+}
+
 interface SettingsData {
   shopName: string;
   shopPhone: string;
@@ -153,15 +158,30 @@ export default function QuickEntry({
               `Mode: ${paymentLabel}`,
               `Dhanyavaad!`,
             ].join("\n");
-            try {
-              const smsResult = await BackgroundSms.sendSms({
-                phoneNumber: customer.phone,
-                message: smsText,
+
+            const sendSms = async () => {
+              try {
+                const smsResult = await BackgroundSms.sendSms({
+                  phoneNumber: customer.phone,
+                  message: smsText,
+                });
+                console.log("SMS sent:", smsResult);
+              } catch (e: any) {
+                console.error("SMS failed:", e);
+                setMessage({ type: "error", text: `⚠️ SMS नहीं भेजा: ${e?.message || e}` });
+              }
+            };
+
+            if (BackgroundTask) {
+              const taskId = await BackgroundTask.beforeExit(async () => {
+                try {
+                  await sendSms();
+                } finally {
+                  BackgroundTask.finish({ taskId });
+                }
               });
-              console.log("SMS sent:", smsResult);
-            } catch (e: any) {
-              console.error("SMS failed:", e);
-              setMessage({ type: "error", text: `⚠️ SMS नहीं भेजा: ${e?.message || e}` });
+            } else {
+              await sendSms();
             }
           }
         }
