@@ -100,6 +100,32 @@ public class BackgroundSmsPlugin extends Plugin {
         call.resolve(ret);
     }
 
+    @PluginMethod
+    public void requestPermission(PluginCall call) {
+        if (getPermissionState("sms") == PermissionState.GRANTED) {
+            JSObject ret = new JSObject();
+            ret.put("granted", true);
+            Log.d(TAG, "requestPermission: already granted");
+            call.resolve(ret);
+            return;
+        }
+        Log.d(TAG, "requestPermission: asking user...");
+        requestPermissionForAlias("sms", call, "requestPermissionCallback");
+    }
+
+    @PermissionCallback
+    private void requestPermissionCallback(PluginCall call) {
+        if (call == null) {
+            Log.e(TAG, "requestPermission callback: call is null");
+            return;
+        }
+        boolean granted = getPermissionState("sms") == PermissionState.GRANTED;
+        Log.d(TAG, "requestPermission result: " + granted);
+        JSObject ret = new JSObject();
+        ret.put("granted", granted);
+        call.resolve(ret);
+    }
+
     private String cleanPhoneNumber(String phone) {
         phone = phone.replaceAll("[\\s\\-\\(\\)\\.]", "");
         // Only strip +91, 0 prefix — NOT bare "91" since valid 10-digit

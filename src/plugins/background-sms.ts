@@ -18,6 +18,7 @@ export interface PermissionResult {
 export interface BackgroundSmsPlugin {
   sendSms(options: SendSmsOptions): Promise<SmsResult>;
   checkPermission(): Promise<PermissionResult>;
+  requestPermission(): Promise<PermissionResult>;
 }
 
 const BackgroundSms = registerPlugin<BackgroundSmsPlugin>('BackgroundSms');

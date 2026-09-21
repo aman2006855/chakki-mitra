@@ -8,6 +8,7 @@ import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import PullToRefresh from "@/components/PullToRefresh";
 import AutoUpdater from "@/components/AutoUpdater";
+import SmsPermissionPrompt from "@/components/SmsPermissionPrompt";
 import QuickEntry from "@/components/QuickEntry";
 import KhataBook from "@/components/KhataBook";
 import Reports from "@/components/Reports";
@@ -164,6 +165,7 @@ export default function App() {
         </main>
       </PullToRefresh>
       <BottomNav activeTab={tab} onTabChange={setTab} />
+      <SmsPermissionPrompt />
     </div>
   );
 }

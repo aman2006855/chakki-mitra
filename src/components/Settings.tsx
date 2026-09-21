@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Download, Upload, RefreshCw } from "lucide-react";
+import { Save, Download, Upload, RefreshCw, MessageSquareText, CheckCircle2, XCircle } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { App } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
+import BackgroundSms from "@/plugins/background-sms";
+import { isNativePlatform } from "@/lib/capacitor";
 
 const GITHUB_REPO = "aman2006855/chakki-mitra";
 const GITHUB_API = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
@@ -51,11 +53,37 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState("");
   const [checkingUpdate, setCheckingUpdate] = useState(true);
+  const [smsGranted, setSmsGranted] = useState<boolean | null>(null);
+  const [smsAsking, setSmsAsking] = useState(false);
 
   useEffect(() => {
     getVersion();
     checkUpdate();
+    checkSmsPermission();
   }, []);
+
+  async function checkSmsPermission() {
+    if (!isNativePlatform()) return;
+    try {
+      const res = await BackgroundSms.checkPermission();
+      setSmsGranted(res.granted);
+    } catch {
+      setSmsGranted(false);
+    }
+  }
+
+  async function handleSmsAllow() {
+    setSmsAsking(true);
+    try {
+      const res = await BackgroundSms.requestPermission();
+      setSmsGranted(res.granted);
+      showMessage(res.granted ? "✅ SMS permission mil gayi!" : "⚠️ Permission nahi mili — neeche manual steps dekho");
+    } catch {
+      setSmsGranted(false);
+      showMessage("⚠️ Permission nahi mili — neeche manual steps dekho");
+    }
+    setSmsAsking(false);
+  }
 
   async function getVersion() {
     try {
@@ -237,6 +265,49 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
         <Save className="w-5 h-5" />
         सेटिंग सेव करें
       </button>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">📩 SMS Permission</h3>
+        {smsGranted === null ? (
+          <p className="text-xs text-gray-400">Web par SMS permission लागू नहीं होती — ye sirf APK me dikhta hai. / SMS permission applies only in the Android app.</p>
+        ) : (
+          <div className="space-y-3">
+            <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-semibold ${
+              smsGranted
+                ? "bg-green-50 text-green-700 border-green-200"
+                : "bg-red-50 text-red-700 border-red-200"
+            }`}>
+              {smsGranted ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+              {smsGranted ? "✅ Permission Granted — SMS jayega!" : "❌ Permission Nahi Mili — SMS nahi jayega"}
+            </div>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Har entry par grahak ko automatic SMS receipt bhejne ke liye permission chahiye.
+              <span className="text-gray-400"> SMS permission is needed to send automatic receipts after every entry.</span>
+            </p>
+            {!smsGranted && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleSmsAllow}
+                  disabled={smsAsking}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-orange-500 text-white text-sm font-semibold active:bg-orange-600 disabled:opacity-60"
+                >
+                  <MessageSquareText className="w-4 h-4" />
+                  {smsAsking ? "Ruko..." : "✅ Permission Do / Grant"}
+                </button>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                  <p className="text-xs font-semibold text-amber-800 mb-1">📱 Manual tarika / Manual steps:</p>
+                  <ol className="text-xs text-amber-700 space-y-0.5 list-decimal list-inside">
+                    <li>Phone ki <b>Settings</b> kholo</li>
+                    <li><b>Apps → चक्की मित्र</b></li>
+                    <li><b>Permissions → SMS → Allow</b> karo</li>
+                  </ol>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">💾 डेटा बैकअप</h3>
