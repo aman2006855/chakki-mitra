@@ -44,6 +44,8 @@ export default function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const initialized = useRef(false);
   const authRedirected = useRef(false);
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
 
   useEffect(() => {
     if (loading || authRedirected.current) return;
@@ -61,14 +63,14 @@ export default function App() {
 
   useEffect(() => {
     const handler = App.addListener("backButton", ({ canGoBack }) => {
-      if (tab !== "home") {
+      if (tabRef.current !== "home") {
         setTab("home");
       } else {
         App.exitApp();
       }
     });
     return () => { handler.then((h) => h.remove()); };
-  }, [tab]);
+  }, []);
 
   useEffect(() => {
     if (initialized.current) return;
