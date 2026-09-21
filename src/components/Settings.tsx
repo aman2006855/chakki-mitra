@@ -55,12 +55,77 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
   const [checkingUpdate, setCheckingUpdate] = useState(true);
   const [smsGranted, setSmsGranted] = useState<boolean | null>(null);
   const [smsAsking, setSmsAsking] = useState(false);
+  // email change
+  const [currentEmail, setCurrentEmail] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [ecOtpSent, setEcOtpSent] = useState(false);
+  const [ecOtp, setEcOtp] = useState("");
+  const [ecBusy, setEcBusy] = useState(false);
 
   useEffect(() => {
     getVersion();
     checkUpdate();
     checkSmsPermission();
+    fetchCurrentEmail();
   }, []);
+
+  async function fetchCurrentEmail() {
+    try {
+      const res = await api("/api/settings");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.email) setCurrentEmail(data.email);
+      }
+    } catch {}
+  }
+
+  async function handleEmailOtpSend() {
+    if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+      showMessage("❌ Sahi nayi email dalo");
+      return;
+    }
+    if (newEmail === currentEmail) {
+      showMessage("⚠️ Ye to wahi purani email hai");
+      return;
+    }
+    setEcBusy(true);
+    try {
+      const res = await api("/api/auth/otp/send", {
+        method: "POST",
+        body: JSON.stringify({ email: newEmail, purpose: "change" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "OTP nahi bheja gaya");
+      setEcOtpSent(true);
+      showMessage(`📩 OTP ${newEmail} par bheja gaya! Purani email par kuch nahi jayega.`);
+    } catch (e: any) {
+      showMessage(`❌ ${e.message || "OTP nahi bheja gaya"}`);
+    }
+    setEcBusy(false);
+  }
+
+  async function handleEmailChange() {
+    if (!ecOtp || ecOtp.length !== 6) {
+      showMessage("❌ 6-digit OTP dalo");
+      return;
+    }
+    setEcBusy(true);
+    try {
+      const res = await api("/api/auth/email/change", {
+        method: "POST",
+        body: JSON.stringify({ newEmail, code: ecOtp }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Email change nahi hua");
+      setCurrentEmail(data.email || newEmail);
+      setNewEmail(""); setEcOtp(""); setEcOtpSent(false);
+      showMessage("✅ Email change ho gayi!");
+      onUpdate();
+    } catch (e: any) {
+      showMessage(`❌ ${e.message || "Email change nahi hua"}`);
+    }
+    setEcBusy(false);
+  }
 
   async function checkSmsPermission() {
     if (!isNativePlatform()) return;
@@ -225,6 +290,65 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
             />
           </div>
         </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">📧 Email Change</h3>
+        {currentEmail ? (
+          <p className="text-xs text-gray-500 mb-3">Current: <b className="text-gray-800">{currentEmail}</b></p>
+        ) : null}
+        {!ecOtpSent ? (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Nayi email (OTP isi par ayega, purani par nahi)</label>
+              <input
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="nayi@email.com"
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-400"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleEmailOtpSend}
+              disabled={ecBusy}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-orange-200 text-orange-700 text-sm font-semibold active:bg-orange-50 disabled:opacity-60"
+            >
+              {ecBusy ? "Bhej rahe hain..." : "📩 Nayi Email par OTP Bhejo"}
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2">📩 OTP <b>{newEmail}</b> par bheja gaya!</p>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">6-digit OTP</label>
+              <input
+                inputMode="numeric"
+                value={ecOtp}
+                onChange={(e) => setEcOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="••••••"
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-400 text-center tracking-[0.5em] font-bold"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleEmailChange}
+              disabled={ecBusy}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-green-500 text-white text-sm font-semibold active:bg-green-600 disabled:opacity-60"
+            >
+              {ecBusy ? "Ruko..." : "✅ Verify & Email Change Karo"}
+            </button>
+            <button
+              type="button"
+              onClick={handleEmailOtpSend}
+              disabled={ecBusy}
+              className="w-full text-center text-xs text-orange-600 font-semibold"
+            >
+              OTP dobara bhejo
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">

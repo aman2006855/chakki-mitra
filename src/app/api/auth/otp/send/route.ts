@@ -10,16 +10,17 @@ export function OPTIONS() {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// POST { email, purpose: "signup" | "reset" } → Brevo se OTP bhejta hai
+// POST { email, purpose: "signup" | "reset" | "change" } → Resend se OTP bhejta hai
+// NOTE: OTP hamesha NAYI email par jata hai (body.email), purani par kabhi nahi.
 export async function POST(req: Request) {
   try {
     const { email, purpose } = await req.json();
     if (!email || !EMAIL_RE.test(email)) return err("Sahi email dalo.", 400);
-    if (purpose !== "signup" && purpose !== "reset") return err("Invalid purpose", 400);
+    if (purpose !== "signup" && purpose !== "reset" && purpose !== "change") return err("Invalid purpose", 400);
 
     const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
-    if (purpose === "signup" && existing) {
-      return err("यह ईमेल पहले से रजिस्टर्ड है। कृपया लॉगिन करें।", 409);
+    if ((purpose === "signup" || purpose === "change") && existing) {
+      return err("यह ईमेल पहले से रजिस्टर्ड है।", 409);
     }
     if (purpose === "reset") {
       // Account enumerate na ho — hamesha success jaisa response
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
       }
       return ok({ success: true });
     }
-    const r = await createAndSendOtp(email, "signup");
+    const r = await createAndSendOtp(email, purpose);
     if (!r.ok) return err(r.error || "Email nahi bheja gaya.", 500);
     return ok({ success: true });
   } catch (e) {

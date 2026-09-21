@@ -12,6 +12,7 @@ export async function GET(request: Request) {
   const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!user.length) return err("not found", 404);
   return ok({
+    email: user[0].email || "",
     shopName: user[0].shopName || "श्री श्याम आटा चक्की",
     shopPhone: user[0].shopPhone || "",
     attaRate: user[0].attaRate || "5",

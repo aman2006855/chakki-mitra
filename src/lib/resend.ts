@@ -4,7 +4,7 @@
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || "29devs@proton.me";
 
-export type OtpPurpose = "signup" | "reset";
+export type OtpPurpose = "signup" | "reset" | "change";
 
 export async function sendOtpEmail(to: string, code: string, purpose: OtpPurpose): Promise<boolean> {
   if (!RESEND_API_KEY) {
@@ -12,8 +12,13 @@ export async function sendOtpEmail(to: string, code: string, purpose: OtpPurpose
     return false;
   }
   const isSignup = purpose === "signup";
-  const subject = isSignup ? "Chakki Mitra: Email Verification OTP" : "Chakki Mitra: Password Reset OTP";
-  const title = isSignup ? "ईमेल वेरिफिकेशन" : "पासवर्ड रीसेट";
+  const subject =
+    purpose === "change"
+      ? "Chakki Mitra: New Email Verification OTP"
+      : isSignup
+        ? "Chakki Mitra: Email Verification OTP"
+        : "Chakki Mitra: Password Reset OTP";
+  const title = purpose === "change" ? "नया ईमेल वेरिफिकेशन" : isSignup ? "ईमेल वेरिफिकेशन" : "पासवर्ड रीसेट";
   const html = `
 <div style="font-family:sans-serif;max-width:480px;margin:auto;border:1px solid #eee;border-radius:12px;padding:24px">
   <h2 style="color:#ea580c">🌾 Chakki Mitra — ${title}</h2>
