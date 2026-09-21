@@ -83,6 +83,16 @@ jobs:
           cp native/android-plugin/com/chakkimitra/plugin/BackgroundSmsPlugin.java \
              android/app/src/main/java/com/chakkimitra/plugin/
 
+      - name: Register SMS plugin in MainActivity
+        run: |
+          MAIN="android/app/src/main/java/com/getcapacitor/android/MainActivity.java"
+          # Add import for BackgroundSmsPlugin
+          sed -i '1a import com.chakkimitra.plugin.BackgroundSmsPlugin;' "$MAIN"
+          # Add plugin registration inside onCreate, after super.onCreate
+          sed -i '/super.onCreate/i\        registerPlugin(BackgroundSmsPlugin.class);' "$MAIN"
+          echo "--- MainActivity.java ---"
+          cat "$MAIN"
+
       - name: Sync Capacitor
         run: npx cap sync android
 

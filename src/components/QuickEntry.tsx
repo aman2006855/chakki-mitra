@@ -121,7 +121,6 @@ export default function QuickEntry({
 
     setSaving(true);
     try {
-      alert("Step 1: API call start");
       const res = await api("/api/transactions", {
         method: "POST",
         body: JSON.stringify({
@@ -134,7 +133,6 @@ export default function QuickEntry({
           notes,
         }),
       });
-      alert("Step 2: API response ok=" + res.ok);
       if (res.ok) {
         showMessage({ type: "success", text: "✅ एंट्री सेव हो गई!" });
         setWeight("");
@@ -144,10 +142,8 @@ export default function QuickEntry({
         fetchRecent();
         onSaved();
 
-        alert("Step 3: isNativePlatform=" + isNativePlatform());
         if (isNativePlatform()) {
           const customer = customers.find((c) => c.id === customerId);
-          alert("Step 4: customer=" + customer?.name + " phone=" + customer?.phone);
           if (customer?.phone) {
             const productLabel = product === "atta" ? "आटा" : "दलिया";
             const paymentLabel = paymentMode === "cash" ? "नगद" : "उधारी";
@@ -157,24 +153,22 @@ export default function QuickEntry({
               `Mode: ${paymentLabel}`,
               `Dhanyavaad!`,
             ].join("\n");
-            alert("Step 5: Sending SMS to " + customer.phone);
             try {
-              const smsResult = await BackgroundSms.sendSms({
+              await BackgroundSms.sendSms({
                 phoneNumber: customer.phone,
                 message: smsText,
               });
-              alert("Step 6: SMS Success!\n" + JSON.stringify(smsResult));
+              showMessage({ type: "success", text: "✅ SMS भेजा गया!" });
             } catch (e: any) {
-              alert("Step 6: SMS FAIL!\n" + (e?.message || JSON.stringify(e)));
+              showMessage({ type: "error", text: `⚠️ SMS नहीं भेजा: ${e?.message || "unknown"}` }, 5000);
             }
           }
         }
       } else {
-        const errText = await res.text().catch(() => "unknown");
-        alert("❌ API Error: " + res.status + " " + errText);
+        showMessage({ type: "error", text: "❌ सेव नहीं हो पाई" });
       }
-    } catch (e: any) {
-      alert("❌ Exception: " + (e?.message || JSON.stringify(e)));
+    } catch {
+      showMessage({ type: "error", text: "❌ नेटवर्क एरर" });
     }
     setSaving(false);
   };
