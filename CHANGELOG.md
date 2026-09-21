@@ -5,7 +5,7 @@ All notable changes to this project are documented here. Format follows Keep a C
 ## [Unreleased]
 
 ### Added
-- Resend OTP email verification for signup + forgot-password reset (`email_otps` table, `/api/auth/otp/send`, `/api/auth/password/reset`).
+- Supabase Auth Email OTP for signup verification + forgot-password reset (hamara JWT session same; Supabase sirf OTP mailer+verifier, `/api/auth/password/reset`).
 - Settings me email change (OTP hamesha NAYI email par, `/api/auth/email/change`).
 - "Last used" badge on Email/Google login options.
 - scrypt password hashing with transparent legacy migration.

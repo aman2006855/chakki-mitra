@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { getSupabase, friendlySupabaseError } from "@/lib/supabase";
 
 function getToken(): string | null {
   try {
@@ -82,12 +83,11 @@ export default function LoginPage() {
       if (!otpSent) {
         setOtpSending(true);
         try {
-          const res = await api("/api/auth/otp/send", {
-            method: "POST",
-            body: JSON.stringify({ email: finalEmail, purpose: "signup" }),
+          const { error } = await getSupabase().auth.signInWithOtp({
+            email: finalEmail,
+            options: { shouldCreateUser: true },
           });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(data.error || "OTP nahi bheja gaya");
+          if (error) throw new Error(friendlySupabaseError(error.message));
           setOtpSent(true);
           setInfoMsg(`📩 OTP ${finalEmail} par bheja gaya! 10 min me use karo.`);
         } catch (er: any) {
@@ -104,13 +104,25 @@ export default function LoginPage() {
 
     setSubmitting(true);
     try {
+      // Signup me pehle Supabase OTP verify, phir hamara account + JWT
+      let supabaseToken: string | undefined;
+      if (activeTab === "signup") {
+        const { data, error } = await getSupabase().auth.verifyOtp({
+          email: finalEmail,
+          token: otp,
+          type: "email",
+        });
+        if (error || !data.session) throw new Error(friendlySupabaseError(error?.message || ""));
+        supabaseToken = data.session.access_token;
+        try { await getSupabase().auth.signOut(); } catch {}
+      }
       const res = await api("/api/auth/email", {
         method: "POST",
         body: JSON.stringify({
           email: finalEmail,
           password: finalPassword,
           action: activeTab,
-          ...(activeTab === "signup" ? { otp } : {}),
+          ...(activeTab === "signup" ? { supabaseToken } : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -139,12 +151,11 @@ export default function LoginPage() {
     if (!fEmail) { setErrorMsg("Email dalo"); return; }
     setFBusy(true);
     try {
-      const res = await api("/api/auth/otp/send", {
-        method: "POST",
-        body: JSON.stringify({ email: fEmail, purpose: "reset" }),
+      const { error } = await getSupabase().auth.signInWithOtp({
+        email: fEmail,
+        options: { shouldCreateUser: true },
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "OTP nahi bheja gaya");
+      if (error) throw new Error(friendlySupabaseError(error.message));
       setFOtpSent(true);
       setInfoMsg(`📩 OTP ${fEmail} par bheja gaya!`);
     } catch (e: any) {
@@ -159,12 +170,20 @@ export default function LoginPage() {
     if (!fNewPass || fNewPass.length < 6) { setErrorMsg("Naya password min 6 character ka ho"); return; }
     setFBusy(true);
     try {
+      const { data, error } = await getSupabase().auth.verifyOtp({
+        email: fEmail,
+        token: fCode,
+        type: "email",
+      });
+      if (error || !data.session) throw new Error(friendlySupabaseError(error?.message || ""));
+      const supabaseToken = data.session.access_token;
+      try { await getSupabase().auth.signOut(); } catch {}
       const res = await api("/api/auth/password/reset", {
         method: "POST",
-        body: JSON.stringify({ email: fEmail, code: fCode, newPassword: fNewPass }),
+        body: JSON.stringify({ supabaseToken, newPassword: fNewPass }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Reset nahi ho paya");
+      const rdata = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(rdata.error || "Reset nahi ho paya");
       setView("main");
       setActiveTab("login");
       setFOtpSent(false); setFCode(""); setFNewPass(""); setFEmail("");
