@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, numeric, text, timestamp, pgEnum, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, numeric, text, timestamp, pgEnum, boolean, integer } from "drizzle-orm/pg-core";
 
 export const productTypeEnum = pgEnum("product_type", ["atta", "dalia"]);
 export const paymentModeEnum = pgEnum("payment_mode", ["cash", "credit"]);
@@ -48,6 +48,18 @@ export const payments = pgTable("payments", {
   amount: numeric("amount").notNull(),
   type: paymentTypeEnum("type").notNull(),
   description: text("description").default(""),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Email OTPs for signup verification + password reset (Brevo)
+export const emailOtps = pgTable("email_otps", {
+  id: serial("id").primaryKey(),
+  email: varchar("email", { length: 300 }).notNull(),
+  codeHash: varchar("code_hash", { length: 128 }).notNull(),
+  purpose: varchar("purpose", { length: 20 }).notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  attempts: integer("attempts").default(0),
+  used: boolean("used").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

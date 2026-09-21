@@ -5,7 +5,9 @@ All notable changes to this project are documented here. Format follows Keep a C
 ## [Unreleased]
 
 ### Added
-- None pending.
+- Brevo OTP email verification for signup + forgot-password reset (`email_otps` table, `/api/auth/otp/send`, `/api/auth/password/reset`).
+- "Last used" badge on Email/Google login options.
+- scrypt password hashing with transparent legacy migration.
 
 ## [1.0.24] - 2026-09-21
 
