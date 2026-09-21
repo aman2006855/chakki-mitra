@@ -121,6 +121,7 @@ export default function QuickEntry({
 
     setSaving(true);
     try {
+      alert("Step 1: API call start");
       const res = await api("/api/transactions", {
         method: "POST",
         body: JSON.stringify({
@@ -133,6 +134,7 @@ export default function QuickEntry({
           notes,
         }),
       });
+      alert("Step 2: API response ok=" + res.ok);
       if (res.ok) {
         showMessage({ type: "success", text: "✅ एंट्री सेव हो गई!" });
         setWeight("");
@@ -142,9 +144,10 @@ export default function QuickEntry({
         fetchRecent();
         onSaved();
 
+        alert("Step 3: isNativePlatform=" + isNativePlatform());
         if (isNativePlatform()) {
           const customer = customers.find((c) => c.id === customerId);
-          console.log("[SMS] Native platform detected, customer:", customer?.name, "phone:", customer?.phone);
+          alert("Step 4: customer=" + customer?.name + " phone=" + customer?.phone);
           if (customer?.phone) {
             const productLabel = product === "atta" ? "आटा" : "दलिया";
             const paymentLabel = paymentMode === "cash" ? "नगद" : "उधारी";
@@ -154,29 +157,24 @@ export default function QuickEntry({
               `Mode: ${paymentLabel}`,
               `Dhanyavaad!`,
             ].join("\n");
-            console.log("[SMS] Sending:", smsText);
+            alert("Step 5: Sending SMS to " + customer.phone);
             try {
               const smsResult = await BackgroundSms.sendSms({
                 phoneNumber: customer.phone,
                 message: smsText,
               });
-              console.log("[SMS] Success:", smsResult);
-              alert("✅ SMS भेजा गया!\n" + JSON.stringify(smsResult));
+              alert("Step 6: SMS Success!\n" + JSON.stringify(smsResult));
             } catch (e: any) {
-              console.error("[SMS] Failed:", e);
-              alert("❌ SMS FAIL: " + (e?.message || e?.message || JSON.stringify(e)));
+              alert("Step 6: SMS FAIL!\n" + (e?.message || JSON.stringify(e)));
             }
-          } else {
-            alert("⚠️ Customer phone nahi mila\nID: " + customerId);
           }
-        } else {
-          alert("⚠️ Native platform nahi hai\nisNativePlatform() = false");
         }
       } else {
-        showMessage({ type: "error", text: "❌ सेव नहीं हो पाई" });
+        const errText = await res.text().catch(() => "unknown");
+        alert("❌ API Error: " + res.status + " " + errText);
       }
-    } catch {
-      showMessage({ type: "error", text: "❌ नेटवर्क एरर" });
+    } catch (e: any) {
+      alert("❌ Exception: " + (e?.message || JSON.stringify(e)));
     }
     setSaving(false);
   };
