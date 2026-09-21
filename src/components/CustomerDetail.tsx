@@ -92,9 +92,10 @@ export default function CustomerDetail({
     try {
       const res = await api(`/api/transactions?id=${id}`, { method: "DELETE" });
       if (res.ok) {
+        const updated = transactions.filter((t) => t.id !== id);
+        setTransactions(updated);
+        recalcSummary(updated, payments);
         showToast({ type: "success", text: "✅ एंट्री डिलीट हो गई!" });
-        fetchDetail();
-        onRefresh();
       } else {
         showToast({ type: "error", text: "❌ डिलीट नहीं हो पाई" });
       }
@@ -124,6 +125,20 @@ export default function CustomerDetail({
     setLoading(false);
   };
 
+  const recalcSummary = (txns: Transaction[], pays: any[]) => {
+    let totalBilled = 0;
+    txns.forEach((t) => { totalBilled += parseFloat(t.amount) || 0; });
+    let totalJama = 0;
+    let totalAdvance = 0;
+    pays.forEach((p: any) => {
+      const amt = parseFloat(p.amount) || 0;
+      if (p.type === "advance") totalAdvance += amt;
+      else totalJama += amt;
+    });
+    const pendingDues = Math.max(0, totalBilled - totalJama);
+    setSummary({ totalBilled, totalJama, pendingDues, totalAdvance, netBalance: totalBilled - totalJama - totalAdvance });
+  };
+
   const paymentSavingRef = useRef(false);
 
   const handlePayment = async () => {
@@ -141,12 +156,14 @@ export default function CustomerDetail({
         }),
       });
       if (res.ok) {
+        const newPayment = await res.json();
+        const updatedPayments = [newPayment, ...payments];
+        setPayments(updatedPayments);
+        recalcSummary(transactions, updatedPayments);
         showToast({ type: "success", text: "✅ जमा हो गई!" });
         setShowPaymentModal(false);
         setPaymentAmount("");
         setPaymentDesc("");
-        fetchDetail();
-        onRefresh();
       } else {
         showToast({ type: "error", text: "❌ जमा नहीं हो पाई" });
       }
