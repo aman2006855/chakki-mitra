@@ -120,8 +120,13 @@ export default function CustomerDetail({
   };
 
   const sendWhatsAppReminder = () => {
+    let shopName = "चक्की मित्र";
+    try {
+      const ls = localStorage.getItem("chakki_mitra_settings");
+      if (ls) { const s = JSON.parse(ls); if (s.shopName) shopName = s.shopName; }
+    } catch {}
     const msg = encodeURIComponent(
-      `📋 *बकाया रिमाइंडर*\n\n${customer.name} जी,\n${customer.name} चक्की पर आपकी बकाया राशि: *₹${summary.pendingDues.toFixed(0)}*\n\nकृपया जल्द से जल्द भुगतान करें।\n\nधन्यवाद 🙏`
+      `📋 *बकाया रिमाइंडर*\n\n${customer.name} जी,\n${shopName} पर आपकी बकाया राशि: *₹${summary.pendingDues.toFixed(0)}*\n\nकृपया जल्द से जल्द भुगतान करें।\n\nधन्यवाद 🙏`
     );
     window.open(`https://wa.me/91${customer.phone.replace(/^0+/, "")}?text=${msg}`, "_blank");
   };
