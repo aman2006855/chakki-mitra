@@ -149,14 +149,18 @@ export default function App() {
       <Header shopName={settings.shopName} />
       <PullToRefresh onRefresh={refreshData}>
         <main className="pb-20 flex-1 min-h-0">
-          {tab === "home" && (
+          <div style={{ display: tab === "home" ? "block" : "none" }}>
             <QuickEntry settings={settings} customers={customers} onSaved={refreshData} />
-          )}
-          {tab === "khata" && <KhataBook customers={customers} onRefresh={refreshData} />}
-          {tab === "reports" && <Reports />}
-          {tab === "settings" && (
+          </div>
+          <div style={{ display: tab === "khata" ? "block" : "none" }}>
+            <KhataBook customers={customers} onRefresh={refreshData} />
+          </div>
+          <div style={{ display: tab === "reports" ? "block" : "none" }}>
+            <Reports />
+          </div>
+          <div style={{ display: tab === "settings" ? "block" : "none" }}>
             <Settings settings={settings} onUpdate={refreshData} customers={customers} />
-          )}
+          </div>
         </main>
       </PullToRefresh>
       <BottomNav activeTab={tab} onTabChange={setTab} />
