@@ -83,13 +83,15 @@ jobs:
           from pathlib import Path
           path = Path("android/app/src/main/AndroidManifest.xml")
           text = path.read_text()
-          snippet = """            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="chakkimitra" android:host="auth" />
-            </intent-filter>
-"""
+          snippet = "\n".join([
+              "            <intent-filter>",
+              '                <action android:name="android.intent.action.VIEW" />',
+              '                <category android:name="android.intent.category.DEFAULT" />',
+              '                <category android:name="android.intent.category.BROWSABLE" />',
+              '                <data android:scheme="chakkimitra" android:host="auth" />',
+              "            </intent-filter>",
+              "",
+          ])
           if "chakkimitra" not in text:
               text = text.replace("</activity>", snippet + "        </activity>", 1)
           path.write_text(text)
