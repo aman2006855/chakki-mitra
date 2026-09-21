@@ -14,19 +14,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="hi">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
+        <meta name="theme-color" content="#ea580c" />
         <script dangerouslySetInnerHTML={{ __html: `
-          document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
-          document.addEventListener('gesturechange', function(e) { e.preventDefault(); });
-          document.addEventListener('gestureend', function(e) { e.preventDefault(); });
-          document.addEventListener('touchstart', function(e) {
-            if (e.touches && e.touches.length > 1) { e.preventDefault(); }
-          }, { passive: false, capture: true });
           document.addEventListener('wheel', function(e) {
             if (e.ctrlKey) { e.preventDefault(); }
           }, { passive: false });
         `}} />
       </head>
-      <body className="bg-gray-50 text-gray-900 antialiased">
+      <body className="bg-gray-50 text-gray-900 antialiased" style={{ backgroundColor: '#f9fafb', color: '#111827', minHeight: '100vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

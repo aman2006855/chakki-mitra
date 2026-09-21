@@ -146,11 +146,11 @@ export default function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen max-w-lg mx-auto bg-gray-50 relative">
+    <div className="flex flex-col max-w-lg mx-auto bg-gray-50 relative" style={{ height: '100dvh', overflow: 'hidden' }}>
       <AutoUpdater />
       <Header shopName={settings.shopName} />
       <PullToRefresh onRefresh={refreshData}>
-        <main className="pb-20" key={refreshKey}>
+        <main className="pb-20 flex-1 min-h-0" key={refreshKey}>
           {tab === "home" && (
             <QuickEntry settings={settings} customers={customers} onSaved={refreshData} />
           )}

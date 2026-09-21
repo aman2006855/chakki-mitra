@@ -5,17 +5,18 @@
     -webkit-tap-highlight-color: transparent;
   }
   html {
-    overscroll-behavior-y: none;
-    touch-action: pan-x pan-y;
-    -ms-content-zooming: none;
     -webkit-text-size-adjust: 100%;
+    background-color: #f9fafb;
   }
   body {
     font-family: system-ui, -apple-system, sans-serif;
-    overscroll-behavior-y: none;
-    touch-action: pan-x pan-y;
-    -ms-content-zooming: none;
     -webkit-text-size-adjust: 100%;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    background-color: #f9fafb;
+    color: #111827;
+    min-height: 100vh;
+    overflow-y: auto;
   }
   ::-webkit-scrollbar {
     width: 4px;

@@ -65,8 +65,8 @@ export default function PullToRefresh({ onRefresh, children, threshold = 64 }: P
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className="flex-1 relative"
-      style={{ WebkitOverflowScrolling: "touch", overflowY: "auto", overscrollBehaviorY: "contain" }}
+      className="flex-1 min-h-0 relative"
+      style={{ overflowY: "auto", WebkitOverflowScrolling: "touch" }}
     >
       {/* Floating Pill Indicator */}
       {showPill && (
@@ -130,7 +130,7 @@ export default function PullToRefresh({ onRefresh, children, threshold = 64 }: P
           </div>
         </div>
       )}
-      <div>{children}</div>
+      <div className="min-h-0">{children}</div>
     </div>
   );
 }

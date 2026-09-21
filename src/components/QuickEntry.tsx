@@ -58,6 +58,7 @@ export default function QuickEntry({
   const [dashboard, setDashboard] = useState<any>(null);
   const [recentTxns, setRecentTxns] = useState<RecentTransaction[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const msgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const rate = parseFloat(product === "atta" ? settings.attaRate : settings.daliaRate);
   const weightNum = parseFloat(weight) || 0;
@@ -98,24 +99,23 @@ export default function QuickEntry({
     }
   };
 
-  useEffect(() => {
-    if (message) {
-      const t = setTimeout(() => setMessage(null), 3000);
-      return () => clearTimeout(t);
-    }
-  }, [message]);
+  const showMessage = (msg: { type: "success" | "error"; text: string }, duration = 3000) => {
+    if (msgTimerRef.current) clearTimeout(msgTimerRef.current);
+    setMessage(msg);
+    msgTimerRef.current = setTimeout(() => setMessage(null), duration);
+  };
 
   const handleSave = async () => {
     if (!customerId) {
-      setMessage({ type: "error", text: "⚠️ ग्राहक चुनें" });
+      showMessage({ type: "error", text: "⚠️ ग्राहक चुनें" });
       return;
     }
     if (weightNum <= 0) {
-      setMessage({ type: "error", text: "⚠️ वजन डालें" });
+      showMessage({ type: "error", text: "⚠️ वजन डालें" });
       return;
     }
     if (!paymentMode) {
-      setMessage({ type: "error", text: "⚠️ पेमेंट मोड चुनें" });
+      showMessage({ type: "error", text: "⚠️ पेमेंट मोड चुनें" });
       return;
     }
 
@@ -134,7 +134,7 @@ export default function QuickEntry({
         }),
       });
       if (res.ok) {
-        setMessage({ type: "success", text: "✅ एंट्री सेव हो गई!" });
+        showMessage({ type: "success", text: "✅ एंट्री सेव हो गई!" });
         setWeight("");
         setPaymentMode(null);
         setNotes("");
@@ -161,10 +161,10 @@ export default function QuickEntry({
                 message: smsText,
               });
               console.log("[SMS] Success:", smsResult);
-              setMessage({ type: "success", text: "✅ SMS भेजा गया!" });
+              showMessage({ type: "success", text: "✅ SMS भेजा गया!" });
             } catch (e: any) {
               console.error("[SMS] Failed:", e);
-              setMessage({ type: "error", text: `⚠️ SMS नहीं भेजा: ${e?.message || JSON.stringify(e)}` });
+              showMessage({ type: "error", text: `⚠️ SMS नहीं भेजा: ${e?.message || JSON.stringify(e)}` }, 5000);
             }
           } else {
             console.log("[SMS] No customer or no phone for customerId:", customerId);
@@ -173,10 +173,10 @@ export default function QuickEntry({
           console.log("[SMS] Not native platform, skipping SMS");
         }
       } else {
-        setMessage({ type: "error", text: "❌ सेव नहीं हो पाई" });
+        showMessage({ type: "error", text: "❌ सेव नहीं हो पाई" });
       }
     } catch {
-      setMessage({ type: "error", text: "❌ नेटवर्क एरर" });
+      showMessage({ type: "error", text: "❌ नेटवर्क एरर" });
     }
     setSaving(false);
   };
