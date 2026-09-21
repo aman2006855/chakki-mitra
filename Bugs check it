@@ -1,0 +1,93 @@
+Main repo mein background/auto-SMS service aur toast ka flow check karunga. Sirf bugs aur unke possible causes report karunga—koi code ya configuration change nahi karunga.
+
+Ab tak do clear issues mile hain: “toast” screen par fixed popup nahi, page ke top par normal message hai—scroll karne par nazar nahi aayega. SMS plugin mein number-cleaning bug bhi hai, aur SMS ka actual send result check kiye bina success return ho raha hai. Main local APK setup aur GitHub build ka difference bhi verify kar raha hoon, taaki build-specific problem ko sabhi APKs par apply na kar doon.
+
+Maine **read-only audit** kiya hai—koi code/configuration change nahi ki. `git diff` clean hai.
+
+**Short answer:** Toast ke liye placement/visibility issue mila hai. Auto-SMS mein number-cleaning bug, local APK setup ki kami aur SMS failure detect na karne ki problem mili hai.
+
+## 1. Auto-SMS ke bugs
+
+### 🔴 Valid mobile numbers galat clean ho rahe hain
+[BackgroundSmsPlugin.java:103–106](native/android-plugin/com/chakkimitra/plugin/BackgroundSmsPlugin.java#L103-L106)
+
+Code number ki length dekhe bina shuru ka `91` hata deta hai. Isliye **10-digit mobile number jo khud `91` se shuru ho**, woh corrupt ho jaata hai.
+
+Read-only check mein:
+```text
+Input:   9123456789
+Cleaned: 23456789
+Result:  “Invalid phone number: too short”
+```
+Yeh **confirmed bug** hai; affected numbers par SMS send attempt tak nahi pahunchega.
+
+### 🔴 Local Android setup mein plugin registration aur permission missing hain
+[scripts/setup-android.sh:16–24](scripts/setup-android.sh#L16-L24)
+
+Local setup script sirf plugin ki Java file copy karti hai. Woh:
+- Custom `MainActivity.java` copy nahi karti, jisme plugin registration hai.
+- Manifest mein `SEND_SMS` permission add nahi karti.
+
+**Agar fresh APK is script se banayi gayi hai**, SMS plugin usable nahi hoga.
+
+**Important distinction:** Current [GitHub workflow:75–102](.github/workflows/build-android.yml#L75-L102) mein permission aur MainActivity/plugin copying already present hain. Isliye *har APK mein plugin missing hai* kehna sahi nahi hoga.
+
+### 🔴 SMS actually send hua ya nahi—code check hi nahi karta
+[BackgroundSmsPlugin.java:136–146](native/android-plugin/com/chakkimitra/plugin/BackgroundSmsPlugin.java#L136-L146)
+
+Dono send methods mein sent/delivery callbacks `null` hain. Method call ke turant baad plugin:
+```text
+success: true
+“SMS sent successfully”
+```
+return karta hai.
+
+**Impact:** Android ko request dena hi “SMS bhej diya” maana ja raha hai. Baad mein hone wali sending failure JS `catch` tak nahi aayegi.
+
+Saath hi [line 113](native/android-plugin/com/chakkimitra/plugin/BackgroundSmsPlugin.java#L113) par sirf `SmsManager.getDefault()` use hota hai. Multi-SIM device mein suitable default SMS subscription na hone par send fail ho sakta hai; Android API bhi yeh condition document karti hai. Yeh **device-dependent possibility** hai, aapke phone par confirmed diagnosis nahi. [2](https://android.googlesource.com/platform/frameworks/base/+/master/telephony/java/android/telephony/SmsManager.java)
+
+### 🟠 Naye customer ki first entry par SMS silently skip ho sakta hai
+[QuickEntry.tsx:176–185](src/components/QuickEntry.tsx#L176-L185), [145–147](src/components/QuickEntry.tsx#L145-L147)
+
+Customer create hone par uski ID select ho jaati hai, lekin updated customer list baad mein async load hoti hai. Beech mein entry save karne par:
+- Transaction save ho sakti hai.
+- `customers.find(...)` customer nahi dhoondh paata.
+- SMS skip hota hai; **skip ka warning/message nahi hai**.
+
+Is missing-customer case ko mocked control-flow check mein reproduce kiya.
+
+## 2. Toast show nahi hone ke reasons
+
+### 🔴 “Toast” actually scrollable page ke top par normal banner hai
+[QuickEntry.tsx:199–208](src/components/QuickEntry.tsx#L199-L208), [Settings.tsx:160–165](src/components/Settings.tsx#L160-L165)
+
+Messages fixed popup/overlay nahi hain. Woh [scrollable container](src/components/PullToRefresh.tsx#L63-L69) ke andar normal content hain.
+
+**Neeche scroll karke Save dabane par message upar, visible area ke bahar ho sakta hai.** QuickEntry ka normal message 3 seconds mein clear bhi ho jaata hai. Yeh toast “show nahi hua” ka sabse direct code-level explanation hai.
+
+### 🟠 Messages overwrite hote hain aur tab change par kho jaate hain
+[QuickEntry.tsx:137–163](src/components/QuickEntry.tsx#L137-L163), [page.tsx:152–159](src/app/page.tsx#L152-L159)
+
+- Entry-save success aur SMS result ek hi `message` state use karte hain. SMS result pehle message ko replace kar deta hai.
+- Home se doosre tab par jaane par `QuickEntry` unmount hota hai. Pending SMS ka result doosre tab par dikhane ke liye shared notification system nahi hai.
+
+### 🟠 Settings mein purana timer naye message ko hata deta hai
+[Settings.tsx:103–105](src/components/Settings.tsx#L103-L105), [133–134](src/components/Settings.tsx#L133-L134)
+
+Settings ke actions apne timers start karte hain, lekin purana timer cancel nahi hota. Save ke turant baad backup action karne par pehle action ka timer **naya message jaldi clear** kar deta hai. Mocked timer test mein confirm hua.
+
+**Note:** QuickEntry mein previous timer clear hota hai; yeh particular bug Settings mein hai.
+
+### 🟠 Kuch feedback misleading ya implemented hi nahi hai
+- [Settings.tsx:97–107](src/components/Settings.tsx#L97-L107): HTTP response ka `res.ok` check nahi hota. Mocked **HTTP 500 par bhi “सेटिंग सेव हो गई!”** aaya.
+- [CustomerDetail.tsx:100–119](src/components/CustomerDetail.tsx#L100-L119): Payment save/failure ke liye toast call hi nahi hai; caught error sirf console mein jaata hai.
+
+## 3. Background service ke baare mein important clarification
+
+[QuickEntry.tsx:124–166](src/components/QuickEntry.tsx#L124-L166) mein SMS **successful entry-save ke baad native platform par hi** trigger hota hai. Browser/PWA par yeh silently skip hota hai.
+
+Plugin SMS app khole bina send attempt karta hai, lekin **app band/kill hone ke baad pending SMS process/retry karne wali persistent background service ya queue implemented nahi hai**.
+
+Ek additional edge-case bhi mila: [Unicode splitting:121–130](native/android-plugin/com/chakkimitra/plugin/BackgroundSmsPlugin.java#L121-L130) mein fixed 67 UTF-16 units par text cut hota hai; boundary par emoji aane se uska surrogate pair toot sakta hai.
+
+**Verification limit:** Phone-cleaning aur selected save/message flows read-only, in-memory checks se verify kiye. Actual Android/SIM sending aur installed APK test nahi hua. Isliye aapke device par kaunsa SMS issue trigger ho raha hai, uske liye APK build source/version aur Logcat evidence chahiye.
