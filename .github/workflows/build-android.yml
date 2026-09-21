@@ -85,10 +85,11 @@ jobs:
 
       - name: Register SMS plugin in MainActivity
         run: |
-          MAIN="android/app/src/main/java/com/getcapacitor/android/MainActivity.java"
+          MAIN=$(find android -name "MainActivity.java" -path "*/src/main/java/*" | head -1)
+          echo "Found MainActivity at: $MAIN"
           # Add import for BackgroundSmsPlugin
           sed -i '1a import com.chakkimitra.plugin.BackgroundSmsPlugin;' "$MAIN"
-          # Add plugin registration inside onCreate, after super.onCreate
+          # Add plugin registration inside onCreate, before super.onCreate
           sed -i '/super.onCreate/i\        registerPlugin(BackgroundSmsPlugin.class);' "$MAIN"
           echo "--- MainActivity.java ---"
           cat "$MAIN"
