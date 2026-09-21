@@ -9,6 +9,7 @@ import {
   Phone,
   MessageCircle,
   FileText,
+  Trash2,
 } from "lucide-react";
 import BillsList from "./BillsList";
 import { api } from "@/lib/api";
@@ -83,6 +84,24 @@ export default function CustomerDetail({
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast(msg);
     toastTimerRef.current = setTimeout(() => setToast(null), duration);
+  };
+
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; label: string } | null>(null);
+
+  const handleDeleteTransaction = async (id: number) => {
+    try {
+      const res = await api(`/api/transactions?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        showToast({ type: "success", text: "✅ एंट्री डिलीट हो गई!" });
+        fetchDetail();
+        onRefresh();
+      } else {
+        showToast({ type: "error", text: "❌ डिलीट नहीं हो पाई" });
+      }
+    } catch {
+      showToast({ type: "error", text: "❌ नेटवर्क एरर" });
+    }
+    setDeleteConfirm(null);
   };
 
   useEffect(() => {
@@ -401,17 +420,29 @@ export default function CustomerDetail({
                         {formatDateTime(t.created_at)}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-bold text-gray-900">{formatCurrency(parseFloat(t.amount))}</div>
-                      <span
-                        className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
-                          t.paymentMode === "cash"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <div className="font-bold text-gray-900">{formatCurrency(parseFloat(t.amount))}</div>
+                        <span
+                          className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                            t.paymentMode === "cash"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {t.paymentMode === "cash" ? "नगद" : "उधारी"}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirm({
+                          id: t.id,
+                          label: `${getProductLabel(t.productType)} ${parseFloat(t.weight).toFixed(0)}kg = ${formatCurrency(parseFloat(t.amount))}`
+                        })}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                       >
-                        {t.paymentMode === "cash" ? "नगद" : "उधारी"}
-                      </span>
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                   {t.notes && (
@@ -654,6 +685,38 @@ export default function CustomerDetail({
                 <IndianRupee className="w-5 h-5" />
                 जमा दर्ज करें
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setDeleteConfirm(null)} />
+          <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-5 mx-4">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Trash2 className="w-6 h-6 text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">⚠️ एंट्री डिलीट करें?</h3>
+              <p className="text-sm text-gray-500 mb-2">{deleteConfirm.label}</p>
+              <p className="text-xs text-red-500 mb-4">यह क्रिया वापस नहीं हो सकती।</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirm(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-medium text-sm active:bg-gray-50"
+                >
+                  रद्द करें
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteTransaction(deleteConfirm.id)}
+                  className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-semibold text-sm active:bg-red-600"
+                >
+                  हाँ, डिलीट करें
+                </button>
+              </div>
             </div>
           </div>
         </div>
