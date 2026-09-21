@@ -12,7 +12,6 @@ const config: CapacitorConfig = {
   },
   plugins: {
     BackgroundSms: {},
-    BackgroundTask: {},
   },
 };
 
