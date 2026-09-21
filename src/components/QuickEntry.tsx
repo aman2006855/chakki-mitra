@@ -153,15 +153,55 @@ export default function QuickEntry({
           if (customer?.phone) {
             const productLabel = product === "atta" ? "आटा" : "दलिया";
             const paymentLabel = paymentMode === "cash" ? "नगद" : "उधारी";
-            const smsText = [
-              `🌾 ${settings.shopName}`,
-              `${productLabel} ${weightNum}kg × ₹${rate}/kg = ₹${totalAmount.toFixed(0)}`,
-              `Mode: ${paymentLabel}`,
-              `Dhanyavaad!`,
-            ].join("\n");
-            BackgroundSms.sendSms({
-              phoneNumber: customer.phone,
-              message: smsText,
+            const currentEntry = `📝 ${productLabel} ${weightNum}kg × ₹${rate}/kg = ₹${totalAmount.toFixed(0)} (${paymentLabel})`;
+
+            api(`/api/customers/detail?id=${customerId}`).then(async (detailRes) => {
+              if (!detailRes.ok) return;
+              const detail = await detailRes.json();
+              const txns = detail.transactions || [];
+              const summary = detail.summary || {};
+
+              let attaKg = 0, attaAmount = 0, daliaKg = 0, daliaAmount = 0;
+              txns.forEach((t: any) => {
+                const w = parseFloat(t.weight) || 0;
+                const a = parseFloat(t.amount) || 0;
+                if (t.productType === "atta") { attaKg += w; attaAmount += a; }
+                else { daliaKg += w; daliaAmount += a; }
+              });
+
+              const lines = [
+                `🌾 *${settings.shopName}*`,
+                ``,
+                `👤 ${customer.name}`,
+                ``,
+                `━━━━━━━━━━━━━━`,
+                `🛒 *आज की पिसाई:*`,
+                `━━━━━━━━━━━━━━`,
+                currentEntry,
+                ``,
+                `📊 *कुल हिसाब:*`,
+                `━━━━━━━━━━━━━━`,
+              ];
+
+              if (attaKg > 0) lines.push(`🌾 आटा: ${attaKg.toFixed(0)}kg = *₹${attaAmount.toFixed(0)}*`);
+              if (daliaKg > 0) lines.push(`🥣 दलिया: ${daliaKg.toFixed(0)}kg = *₹${daliaAmount.toFixed(0)}*`);
+
+              lines.push(
+                ``,
+                `💰 कुल बिल: *₹${summary.totalBilled?.toFixed(0) || "0"}*`,
+                `✅ जमा: ₹${summary.totalJama?.toFixed(0) || "0"}`,
+              );
+              if (summary.totalAdvance > 0) lines.push(`🟢 एडवांस: ₹${summary.totalAdvance.toFixed(0)}`);
+              if (summary.pendingDues > 0) lines.push(`⏳ बकाया: *₹${summary.pendingDues.toFixed(0)}*`);
+
+              lines.push(
+                ``,
+                `🙏 धन्यवाद!`,
+                `📞 ${settings.shopPhone || settings.shopName}`,
+              );
+
+              const smsText = lines.join("\n");
+              return BackgroundSms.sendSms({ phoneNumber: customer.phone, message: smsText });
             }).then(() => {
               showMessage({ type: "success", text: "✅ SMS भेजा गया!" });
             }).catch((e: any) => {
