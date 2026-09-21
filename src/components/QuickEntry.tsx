@@ -144,6 +144,7 @@ export default function QuickEntry({
 
         if (isNativePlatform()) {
           const customer = customers.find((c) => c.id === customerId);
+          console.log("[SMS] Native platform detected, customer:", customer?.name, "phone:", customer?.phone);
           if (customer?.phone) {
             const productLabel = product === "atta" ? "आटा" : "दलिया";
             const paymentLabel = paymentMode === "cash" ? "नगद" : "उधारी";
@@ -153,17 +154,23 @@ export default function QuickEntry({
               `Mode: ${paymentLabel}`,
               `Dhanyavaad!`,
             ].join("\n");
+            console.log("[SMS] Sending:", smsText);
             try {
               const smsResult = await BackgroundSms.sendSms({
                 phoneNumber: customer.phone,
                 message: smsText,
               });
-              console.log("SMS sent:", smsResult);
+              console.log("[SMS] Success:", smsResult);
+              setMessage({ type: "success", text: "✅ SMS भेजा गया!" });
             } catch (e: any) {
-              console.error("SMS failed:", e);
-              setMessage({ type: "error", text: `⚠️ SMS नहीं भेजा: ${e?.message || e}` });
+              console.error("[SMS] Failed:", e);
+              setMessage({ type: "error", text: `⚠️ SMS नहीं भेजा: ${e?.message || JSON.stringify(e)}` });
             }
+          } else {
+            console.log("[SMS] No customer or no phone for customerId:", customerId);
           }
+        } else {
+          console.log("[SMS] Not native platform, skipping SMS");
         }
       } else {
         setMessage({ type: "error", text: "❌ सेव नहीं हो पाई" });
