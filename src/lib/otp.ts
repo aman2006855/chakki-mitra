@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { db } from "@/db";
 import { emailOtps } from "@/db/schema";
 import { eq, and, gt, desc } from "drizzle-orm";
-import { sendOtpEmail, type OtpPurpose } from "./brevo";
+import { sendOtpEmail, type OtpPurpose } from "./resend";
 
 const OTP_TTL_MS = 10 * 60 * 1000;
 const MAX_SEND_PER_HOUR = 5;
