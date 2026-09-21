@@ -128,12 +128,28 @@ export default function CustomerDetail({
     return shopName;
   };
 
+  const formatDate = (d: string) => {
+    try {
+      const fixed = d.includes("T") ? d : d.replace(" ", "T");
+      return new Date(fixed).toLocaleDateString("hi-IN", { day: "numeric", month: "short" });
+    } catch { return d; }
+  };
+
+  const formatDateTime = (d: string) => {
+    try {
+      const fixed = d.includes("T") ? d : d.replace(" ", "T");
+      return new Date(fixed).toLocaleDateString("hi-IN", {
+        day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+      });
+    } catch { return d; }
+  };
+
   const sendWhatsAppReminder = () => {
     const shopName = getShopName();
     const totalPaid = summary.totalBilled - summary.pendingDues + summary.totalAdvance;
     const txCount = transactions.length;
     const recentTx = transactions.slice(0, 3).map((t, i) =>
-      `${i + 1}. ${getProductLabel(t.productType)} ${parseFloat(t.weight).toFixed(0)}kg = ${formatCurrency(parseFloat(t.amount))} (${t.paymentMode === "cash" ? "नगद" : "उधारी"})`
+      `${i + 1}. ${formatDate(t.created_at)} — ${getProductLabel(t.productType)} ${parseFloat(t.weight).toFixed(0)}kg = ${formatCurrency(parseFloat(t.amount))} (${t.paymentMode === "cash" ? "नगद" : "उधारी"})`
     ).join("\n");
 
     const msg = encodeURIComponent(
@@ -162,7 +178,7 @@ export default function CustomerDetail({
     const dateStr = now.toLocaleDateString("hi-IN", { day: "numeric", month: "long", year: "numeric" });
 
     let txLines = transactions.map((t, i) => {
-      const date = new Date(t.created_at).toLocaleDateString("hi-IN", { day: "numeric", month: "short" });
+      const date = formatDate(t.created_at);
       return `${i + 1}. ${date} — ${getProductLabel(t.productType)} ${parseFloat(t.weight).toFixed(0)}kg × ${formatCurrency(parseFloat(t.rate))} = *${formatCurrency(parseFloat(t.amount))}* (${t.paymentMode === "cash" ? "नगद" : "उधारी"})`;
     }).join("\n");
 
@@ -170,7 +186,7 @@ export default function CustomerDetail({
     if (payments.length > 0) {
       paymentLines = "\n✅ *जमा विवरण:*\n" +
         payments.map((p, i) => {
-          const date = new Date(p.created_at).toLocaleDateString("hi-IN", { day: "numeric", month: "short" });
+          const date = formatDate(p.created_at);
           return `${i + 1}. ${date} — ${formatCurrency(parseFloat(p.amount))} ${getPaymentLabel(p.type)}`;
         }).join("\n");
     }
@@ -353,9 +369,7 @@ export default function CustomerDetail({
                         </span>
                       </div>
                       <div className="text-xs text-gray-400 mt-0.5">
-                        {new Date(t.created_at).toLocaleDateString("hi-IN", {
-                          day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-                        })}
+                        {formatDateTime(t.created_at)}
                       </div>
                     </div>
                     <div className="text-right">
@@ -395,9 +409,7 @@ export default function CustomerDetail({
                         {getPaymentLabel(p.type)}
                       </div>
                       <div className="text-xs text-gray-400 mt-0.5">
-                        {new Date(p.created_at).toLocaleDateString("hi-IN", {
-                          day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-                        })}
+                        {formatDateTime(p.created_at)}
                       </div>
                     </div>
                     <div className="font-bold text-green-700 text-lg">
