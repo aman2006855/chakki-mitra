@@ -102,7 +102,10 @@ public class BackgroundSmsPlugin extends Plugin {
 
     private String cleanPhoneNumber(String phone) {
         phone = phone.replaceAll("[\\s\\-\\(\\)\\.]", "");
-        phone = phone.replaceAll("^(\\+91|91|0)", "");
+        // Only strip +91, 0 prefix — NOT bare "91" since valid 10-digit
+        // Indian numbers can start with 91 (e.g. 9123456789)
+        phone = phone.replaceAll("^\\+91", "");
+        phone = phone.replaceAll("^0", "");
         return phone;
     }
 

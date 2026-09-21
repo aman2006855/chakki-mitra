@@ -198,7 +198,7 @@ export default function QuickEntry({
     <div className="px-4 py-3 flex flex-col h-full space-y-4">
       {message && (
         <div
-          className={`px-4 py-2 rounded-lg text-sm font-medium text-center ${
+          className={`sticky top-0 z-30 px-4 py-2.5 rounded-lg text-sm font-medium text-center shadow-md ${
             message.type === "success"
               ? "bg-green-50 text-green-700 border border-green-200"
               : "bg-red-50 text-red-700 border border-red-200"

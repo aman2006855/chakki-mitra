@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Save, Download, Upload, RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
@@ -94,17 +94,28 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
     }
   }
 
+  const msgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showMessage = (text: string, duration = 3000) => {
+    if (msgTimerRef.current) clearTimeout(msgTimerRef.current);
+    setMessage(text);
+    msgTimerRef.current = setTimeout(() => setMessage(""), duration);
+  };
+
   const handleSave = async () => {
     try {
-      await api("/api/settings", {
+      const res = await api("/api/settings", {
         method: "PUT",
         body: JSON.stringify({ shopName, shopPhone, attaRate, daliaRate }),
       });
-      setMessage("✅ सेटिंग सेव हो गई!");
-      onUpdate();
-      setTimeout(() => setMessage(""), 3000);
+      if (res.ok) {
+        showMessage("✅ सेटिंग सेव हो गई!");
+        onUpdate();
+      } else {
+        showMessage("❌ सेव नहीं हो पाई");
+      }
     } catch {
-      setMessage("❌ सेव नहीं हो पाई");
+      showMessage("❌ सेव नहीं हो पाई");
     }
   };
 
@@ -130,10 +141,9 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
       a.download = `chakki-mitra-backup-${new Date().toISOString().split("T")[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      setMessage("✅ बैकअप डाउनलोड हो गया!");
-      setTimeout(() => setMessage(""), 3000);
+      showMessage("✅ बैकअप डाउनलोड हो गया!");
     } catch {
-      setMessage("❌ बैकअप नहीं हो पाया");
+      showMessage("❌ बैकअप नहीं हो पाया");
     }
   };
 
@@ -144,10 +154,9 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
     reader.onload = async (ev) => {
       try {
         const data = JSON.parse(ev.target?.result as string);
-        setMessage("⚠️ इम्पोर्ट फीचर शीघ्र ही उपलब्ध होगा!");
-        setTimeout(() => setMessage(""), 4000);
+        showMessage("⚠️ इम्पोर्ट फीचर शीघ्र ही उपलब्ध होगा!");
       } catch {
-        setMessage("❌ फ़ाइल में एरर है");
+        showMessage("❌ फ़ाइल में एरर है");
       }
     };
     reader.readAsText(file);

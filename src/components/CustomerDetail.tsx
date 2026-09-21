@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   ReceiptText,
@@ -76,6 +76,14 @@ export default function CustomerDetail({
   const [paymentType, setPaymentType] = useState<"advance" | "dues_payment" | "partial_payment">("dues_payment");
   const [paymentDesc, setPaymentDesc] = useState("");
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = (msg: { type: "success" | "error"; text: string }, duration = 3000) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast(msg);
+    toastTimerRef.current = setTimeout(() => setToast(null), duration);
+  };
 
   useEffect(() => {
     fetchDetail();
@@ -100,7 +108,7 @@ export default function CustomerDetail({
   const handlePayment = async () => {
     if (!paymentAmount || parseFloat(paymentAmount) <= 0) return;
     try {
-      await api("/api/payments", {
+      const res = await api("/api/payments", {
         method: "POST",
         body: JSON.stringify({
           customerId: customer.id,
@@ -109,13 +117,18 @@ export default function CustomerDetail({
           description: paymentDesc,
         }),
       });
-      setShowPaymentModal(false);
-      setPaymentAmount("");
-      setPaymentDesc("");
-      fetchDetail();
-      onRefresh();
+      if (res.ok) {
+        showToast({ type: "success", text: "✅ जमा हो गई!" });
+        setShowPaymentModal(false);
+        setPaymentAmount("");
+        setPaymentDesc("");
+        fetchDetail();
+        onRefresh();
+      } else {
+        showToast({ type: "error", text: "❌ जमा नहीं हो पाई" });
+      }
     } catch (e) {
-      console.error(e);
+      showToast({ type: "error", text: "❌ नेटवर्क एरर" });
     }
   };
 
@@ -238,7 +251,18 @@ export default function CustomerDetail({
   }
 
   return (
-    <div className="pb-6">
+    <div className="pb-6 relative">
+      {toast && (
+        <div
+          className={`sticky top-0 z-50 mx-4 mt-2 px-4 py-2.5 rounded-lg text-sm font-medium text-center shadow-md ${
+            toast.type === "success"
+              ? "bg-green-50 text-green-700 border border-green-200"
+              : "bg-red-50 text-red-700 border border-red-200"
+          }`}
+        >
+          {toast.text}
+        </div>
+      )}
       <div className="flex items-center gap-2 px-4 py-3 bg-white border-b border-gray-200 sticky top-0 z-10">
         <button type="button" onClick={onBack} className="p-1.5 rounded-lg hover:bg-gray-100">
           <ArrowLeft className="w-5 h-5" />
