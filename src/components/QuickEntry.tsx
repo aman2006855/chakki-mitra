@@ -161,16 +161,16 @@ export default function QuickEntry({
                 message: smsText,
               });
               console.log("[SMS] Success:", smsResult);
-              showMessage({ type: "success", text: "✅ SMS भेजा गया!" });
+              alert("✅ SMS भेजा गया!\n" + JSON.stringify(smsResult));
             } catch (e: any) {
               console.error("[SMS] Failed:", e);
-              showMessage({ type: "error", text: `⚠️ SMS नहीं भेजा: ${e?.message || JSON.stringify(e)}` }, 5000);
+              alert("❌ SMS FAIL: " + (e?.message || e?.message || JSON.stringify(e)));
             }
           } else {
-            console.log("[SMS] No customer or no phone for customerId:", customerId);
+            alert("⚠️ Customer phone nahi mila\nID: " + customerId);
           }
         } else {
-          console.log("[SMS] Not native platform, skipping SMS");
+          alert("⚠️ Native platform nahi hai\nisNativePlatform() = false");
         }
       } else {
         showMessage({ type: "error", text: "❌ सेव नहीं हो पाई" });
