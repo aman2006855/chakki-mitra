@@ -41,7 +41,6 @@ export default function App() {
     daliaRate: "8",
   });
   const [customers, setCustomers] = useState<CustomerData[]>([]);
-  const [refreshKey, setRefreshKey] = useState(0);
   const initialized = useRef(false);
   const authRedirected = useRef(false);
   const tabRef = useRef(tab);
@@ -107,7 +106,6 @@ export default function App() {
   }, []);
 
   const refreshData = () => {
-    setRefreshKey((k) => k + 1);
     (async () => {
       try {
         const s = await api("/api/settings");
@@ -150,7 +148,7 @@ export default function App() {
       <AutoUpdater />
       <Header shopName={settings.shopName} />
       <PullToRefresh onRefresh={refreshData}>
-        <main className="pb-20 flex-1 min-h-0" key={refreshKey}>
+        <main className="pb-20 flex-1 min-h-0">
           {tab === "home" && (
             <QuickEntry settings={settings} customers={customers} onSaved={refreshData} />
           )}

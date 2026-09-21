@@ -89,38 +89,24 @@ jobs:
 
       - name: Patch Android for SMS plugin
         run: |
-          # Find MainActivity
-          MAIN=$(find android -name "MainActivity.java" -path "*/src/main/java/*" | head -1)
-          echo "=== MainActivity path: $MAIN ==="
-          
-          # Copy plugin AFTER sync (sync won't overwrite it)
+          # Copy pre-built MainActivity.java (includes plugin registration)
+          MAIN_DIR="android/app/src/main/java/com/chakkimitra/app"
+          mkdir -p "$MAIN_DIR"
+          cp native/android/app/src/main/java/com/chakkimitra/app/MainActivity.java "$MAIN_DIR/"
+          echo "=== MainActivity.java copied ==="
+          cat "$MAIN_DIR/MainActivity.java"
+
+          # Copy plugin Java file
           PLUGIN_DIR="android/app/src/main/java/com/chakkimitra/plugin"
           mkdir -p "$PLUGIN_DIR"
           cp native/android-plugin/com/chakkimitra/plugin/BackgroundSmsPlugin.java "$PLUGIN_DIR/"
-          echo "=== Plugin file copied ==="
-          ls -la "$PLUGIN_DIR/"
-          
-          # Patch MainActivity: add import
-          if ! grep -q "BackgroundSmsPlugin" "$MAIN"; then
-            sed -i '1a import com.chakkimitra.plugin.BackgroundSmsPlugin;' "$MAIN"
-            echo "Import added"
-          fi
-          
-          # Patch MainActivity: add registerPlugin (before super.onCreate)
-          if ! grep -q "registerPlugin(BackgroundSmsPlugin" "$MAIN"; then
-            sed -i '/super\.onCreate/i\        registerPlugin(BackgroundSmsPlugin.class);' "$MAIN"
-            echo "Registration added"
-          fi
-          
-          echo "=== Final MainActivity.java ==="
-          cat "$MAIN"
+          echo "=== BackgroundSmsPlugin.java copied ==="
+          cat "$PLUGIN_DIR/BackgroundSmsPlugin.java"
 
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: 'gradle'
+          # Verify both files exist
+          echo "=== Verification ==="
+          ls -la "$MAIN_DIR/MainActivity.java"
+          ls -la "$PLUGIN_DIR/BackgroundSmsPlugin.java"
 
       - name: Configure signing
         if: steps.check-signing.outputs.has_signing == 'true'
