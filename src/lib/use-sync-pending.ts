@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useRef } from "react";
 import { API_BASE } from "./config";
 import { getPendingOps, removePendingOp, isOnline, onOnlineChange } from "./offline-db";

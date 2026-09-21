@@ -2,12 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { useSyncPending } from "@/lib/use-sync-pending";
-
-function SyncProvider({ children }: { children: ReactNode }) {
-  useSyncPending();
-  return <>{children}</>;
-}
+import SyncProvider from "@/components/SyncProvider";
 
 export const metadata: Metadata = {
   title: "चक्की मित्र - Chakki Mitra",
