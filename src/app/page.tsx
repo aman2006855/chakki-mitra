@@ -3,7 +3,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { App } from "@capacitor/app";
+import { App as CapacitorApp } from "@capacitor/app";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import PullToRefresh from "@/components/PullToRefresh";
@@ -62,11 +62,11 @@ export default function App() {
   }, [loading, user]);
 
   useEffect(() => {
-    const handler = App.addListener("backButton", ({ canGoBack }) => {
+    const handler = CapacitorApp.addListener("backButton", ({ canGoBack }) => {
       if (tabRef.current !== "home") {
         setTab("home");
       } else {
-        App.exitApp();
+        CapacitorApp.exitApp();
       }
     });
     return () => { handler.then((h) => h.remove()); };
