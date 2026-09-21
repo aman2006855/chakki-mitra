@@ -6,14 +6,16 @@
   }
   html {
     overscroll-behavior-y: none;
-    touch-action: manipulation;
+    touch-action: pan-x pan-y;
     -ms-content-zooming: none;
+    -webkit-text-size-adjust: 100%;
   }
   body {
     font-family: system-ui, -apple-system, sans-serif;
     overscroll-behavior-y: none;
-    touch-action: manipulation;
+    touch-action: pan-x pan-y;
     -ms-content-zooming: none;
+    -webkit-text-size-adjust: 100%;
   }
   ::-webkit-scrollbar {
     width: 4px;
