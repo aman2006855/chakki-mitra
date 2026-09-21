@@ -90,12 +90,12 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
     }
     setEcBusy(true);
     try {
-      const res = await api("/api/auth/otp/send", {
-        method: "POST",
-        body: JSON.stringify({ email: newEmail, purpose: "change" }),
+      const { getSupabase, friendlySupabaseError } = await import("@/lib/supabase");
+      const { error } = await getSupabase().auth.signInWithOtp({
+        email: newEmail,
+        options: { shouldCreateUser: true },
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "OTP nahi bheja gaya");
+      if (error) throw new Error(friendlySupabaseError(error.message));
       setEcOtpSent(true);
       showMessage(`📩 OTP ${newEmail} par bheja gaya! Purani email par kuch nahi jayega.`);
     } catch (e: any) {
@@ -111,13 +111,22 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
     }
     setEcBusy(true);
     try {
+      const { getSupabase, friendlySupabaseError } = await import("@/lib/supabase");
+      const { data, error } = await getSupabase().auth.verifyOtp({
+        email: newEmail,
+        token: ecOtp,
+        type: "email",
+      });
+      if (error || !data.session) throw new Error(friendlySupabaseError(error?.message || ""));
+      const supabaseToken = data.session.access_token;
+      try { await getSupabase().auth.signOut(); } catch {}
       const res = await api("/api/auth/email/change", {
         method: "POST",
-        body: JSON.stringify({ newEmail, code: ecOtp }),
+        body: JSON.stringify({ newEmail, supabaseToken }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Email change nahi hua");
-      setCurrentEmail(data.email || newEmail);
+      const rdata = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(rdata.error || "Email change nahi hua");
+      setCurrentEmail(rdata.email || newEmail);
       setNewEmail(""); setEcOtp(""); setEcOtpSent(false);
       showMessage("✅ Email change ho gayi!");
       onUpdate();
