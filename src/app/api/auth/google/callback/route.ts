@@ -9,6 +9,8 @@ const REDIRECT_URI = `${process.env.NEXT_PUBLIC_BASE_URL || "https://chakki-mitr
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
+  // state = "<uuid>.android" ya "<uuid>.web" (login route se)
+  const platform = (searchParams.get("state") || "").endsWith(".android") ? "android" : "web";
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?error=auth", req.url));
@@ -57,6 +59,17 @@ export async function GET(req: NextRequest) {
 
     const user = userRow[0];
     const token = signToken({ userId: user.id, name: user.name || "" });
+    const registered = user.isRegistered ? "1" : "0";
+    const name = user.name || "";
+
+    // APK: custom scheme deep-link se app me wapas (browser me nahi atakega)
+    if (platform === "android") {
+      const deep = new URL("chakkimitra://auth");
+      deep.searchParams.set("token", token);
+      deep.searchParams.set("registered", registered);
+      deep.searchParams.set("name", name);
+      return NextResponse.redirect(deep.toString());
+    }
 
     let redirectPath = "/";
     if (!user.isRegistered) {
@@ -65,6 +78,8 @@ export async function GET(req: NextRequest) {
 
     const redirectUrl = new URL(redirectPath, req.url);
     redirectUrl.searchParams.set("token", token);
+    redirectUrl.searchParams.set("registered", registered);
+    redirectUrl.searchParams.set("name", name);
     return NextResponse.redirect(redirectUrl);
   } catch (error) {
     console.error("Google auth error:", error);

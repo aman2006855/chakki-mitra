@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { options as corsOptions } from "@/lib/cors";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
@@ -6,8 +6,10 @@ const REDIRECT_URI = `${process.env.NEXT_PUBLIC_BASE_URL || "https://chakki-mitr
 
 export function OPTIONS() { return corsOptions(); }
 
-export async function GET() {
-  const state = crypto.randomUUID();
+export async function GET(req: NextRequest) {
+  // platform=android (APK) ya web — callback ko batane ke liye state me encode
+  const platform = new URL(req.url).searchParams.get("platform") === "android" ? "android" : "web";
+  const state = `${crypto.randomUUID()}.${platform}`;
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   url.searchParams.set("client_id", GOOGLE_CLIENT_ID);
   url.searchParams.set("redirect_uri", REDIRECT_URI);

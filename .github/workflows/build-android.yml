@@ -77,6 +77,25 @@ jobs:
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           sed -i '/<application/i\    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.SEND_SMS" />\n    <uses-permission android:name="android.permission.READ_SMS" />' "$MANIFEST"
 
+      - name: Add auth deep-link intent-filter
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          path = Path("android/app/src/main/AndroidManifest.xml")
+          text = path.read_text()
+          snippet = """            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="chakkimitra" android:host="auth" />
+            </intent-filter>
+"""
+          if "chakkimitra" not in text:
+              text = text.replace("</activity>", snippet + "        </activity>", 1)
+          path.write_text(text)
+          PY
+          grep -B2 -A6 'chakkimitra' android/app/src/main/AndroidManifest.xml
+
       - name: Sync Capacitor
         run: npx cap sync android
 

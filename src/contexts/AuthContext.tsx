@@ -46,6 +46,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function checkAuth() {
     try {
+      // Google OAuth redirect se aaya ?token= (web flow) — save karke URL saaf karo
+      try {
+        if (typeof window !== "undefined") {
+          const params = new URLSearchParams(window.location.search);
+          const urlToken = params.get("token");
+          if (urlToken && urlToken.split(".").length === 3) {
+            setToken(urlToken);
+            window.history.replaceState({}, "", window.location.pathname);
+          }
+        }
+      } catch {}
       const token = getToken();
       if (!token) {
         setUser(null);
@@ -93,6 +104,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function login() {
+    // APK: system browser + deep-link flow (WebView redirect browser par atka deta hai)
+    if (typeof window !== "undefined") {
+      const Capacitor = (window as any).Capacitor;
+      if (Capacitor?.isNativePlatform?.() === true) {
+        import("@/lib/native-auth").then(({ loginWithGoogleNative }) => {
+          loginWithGoogleNative(
+            saveSession,
+            (registered) => {
+              window.location.replace(registered ? "/" : "/register");
+            },
+            () => {
+              window.location.href = `${API_BASE}/api/auth/google/login?platform=android`;
+            }
+          );
+        });
+        return;
+      }
+    }
     window.location.href = `${API_BASE}/api/auth/google/login`;
   }
 

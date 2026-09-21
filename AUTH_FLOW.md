@@ -35,6 +35,16 @@ flowchart TD
 - Logout: clear token + `setUser(null)`.
 - Forgot/reset password: not implemented — [TBD].
 
+## 5b. Native (APK) Google login
+
+WebView redirect leaves the app stuck on the website, so APK uses system browser + deep link:
+
+1. `login()` detects native → `Browser.open(.../api/auth/google/login?platform=android)`.
+2. Login route encodes platform in OAuth `state` (`<uuid>.android`).
+3. Callback redirects to `chakkimitra://auth?token=&registered=&name=` (manifest intent-filter catches it).
+4. `appUrlOpen` listener (`src/lib/native-auth.ts`) saves session, closes browser, routes `/` or `/register`.
+5. Web flow: callback redirects to `/?token=` or `/register?token=`; `AuthContext.checkAuth()` consumes it into `localStorage` and cleans the URL.
+
 ## 6. Security
 
 - `JWT_SECRET` env (fallback dev string — must override on Vercel).
