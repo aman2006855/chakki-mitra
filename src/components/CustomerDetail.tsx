@@ -119,14 +119,81 @@ export default function CustomerDetail({
     }
   };
 
-  const sendWhatsAppReminder = () => {
+  const getShopName = () => {
     let shopName = "चक्की मित्र";
     try {
       const ls = localStorage.getItem("chakki_mitra_settings");
       if (ls) { const s = JSON.parse(ls); if (s.shopName) shopName = s.shopName; }
     } catch {}
+    return shopName;
+  };
+
+  const sendWhatsAppReminder = () => {
+    const shopName = getShopName();
+    const totalPaid = summary.totalBilled - summary.pendingDues + summary.totalAdvance;
+    const txCount = transactions.length;
+    const recentTx = transactions.slice(0, 3).map((t, i) =>
+      `${i + 1}. ${getProductLabel(t.productType)} ${parseFloat(t.weight).toFixed(0)}kg = ${formatCurrency(parseFloat(t.amount))} (${t.paymentMode === "cash" ? "नगद" : "उधारी"})`
+    ).join("\n");
+
     const msg = encodeURIComponent(
-      `📋 *बकाया रिमाइंडर*\n\n${customer.name} जी,\n${shopName} पर आपकी बकाया राशि: *₹${summary.pendingDues.toFixed(0)}*\n\nकृपया जल्द से जल्द भुगतान करें।\n\nधन्यवाद 🙏`
+      `📋 *बकाया रिमाइंडर*\n\n` +
+      `🙏 ${customer.name} जी,\n\n` +
+      `📍 *${shopName}*\n\n` +
+      `━━━━━━━━━━━━━━━━\n` +
+      `📊 *खाता सारांश:*\n` +
+      `━━━━━━━━━━━━━━━━\n` +
+      `🛒 कुल पिसाई: ${txCount} बार\n` +
+      `💰 कुल बिल: *${formatCurrency(summary.totalBilled)}*\n` +
+      `✅ जमा किया: ${formatCurrency(summary.totalJama)}\n` +
+      `⏳ बकाया राशि: *${formatCurrency(summary.pendingDues)}*\n` +
+      (summary.totalAdvance > 0 ? `🟢 एडवांस: ${formatCurrency(summary.totalAdvance)}\n` : '') +
+      `━━━━━━━━━━━━━━━━\n\n` +
+      (recentTx ? `📝 *हाल की पिसाई:*\n${recentTx}\n\n` : '') +
+      `⚠️ कृपया जल्द से जल्द भुगतान करें।\n\n` +
+      `धन्यवाद 🙏`
+    );
+    window.open(`https://wa.me/91${customer.phone.replace(/^0+/, "")}?text=${msg}`, "_blank");
+  };
+
+  const sendWhatsAppBill = () => {
+    const shopName = getShopName();
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("hi-IN", { day: "numeric", month: "long", year: "numeric" });
+
+    let txLines = transactions.map((t, i) => {
+      const date = new Date(t.created_at).toLocaleDateString("hi-IN", { day: "numeric", month: "short" });
+      return `${i + 1}. ${date} — ${getProductLabel(t.productType)} ${parseFloat(t.weight).toFixed(0)}kg × ${formatCurrency(parseFloat(t.rate))} = *${formatCurrency(parseFloat(t.amount))}* (${t.paymentMode === "cash" ? "नगद" : "उधारी"})`;
+    }).join("\n");
+
+    let paymentLines = "";
+    if (payments.length > 0) {
+      paymentLines = "\n✅ *जमा विवरण:*\n" +
+        payments.map((p, i) => {
+          const date = new Date(p.created_at).toLocaleDateString("hi-IN", { day: "numeric", month: "short" });
+          return `${i + 1}. ${date} — ${formatCurrency(parseFloat(p.amount))} ${getPaymentLabel(p.type)}`;
+        }).join("\n");
+    }
+
+    const msg = encodeURIComponent(
+      `🧾 *${shopName} — बिल*\n\n` +
+      `📅 ${dateStr}\n` +
+      `👤 ${customer.name}\n` +
+      `📞 ${customer.phone}\n` +
+      (customer.address ? `📍 ${customer.address}\n` : '') +
+      `\n━━━━━━━━━━━━━━━━\n` +
+      `🛒 *पिसाई विवरण:*\n` +
+      `━━━━━━━━━━━━━━━━\n` +
+      `${txLines}\n` +
+      paymentLines +
+      `\n━━━━━━━━━━━━━━━━\n` +
+      `💰 कुल बिल: *${formatCurrency(summary.totalBilled)}*\n` +
+      `✅ कुल जमा: *${formatCurrency(summary.totalJama)}*\n` +
+      (summary.totalAdvance > 0 ? `🟢 एडवांस: *${formatCurrency(summary.totalAdvance)}*\n` : '') +
+      `⏳ *बकाया: ${formatCurrency(summary.pendingDues)}*\n` +
+      `━━━━━━━━━━━━━━━━\n\n` +
+      `🙏 ${shopName}\n` +
+      `📞 ${customer.phone}`
     );
     window.open(`https://wa.me/91${customer.phone.replace(/^0+/, "")}?text=${msg}`, "_blank");
   };
@@ -216,22 +283,30 @@ export default function CustomerDetail({
         </div>
       </div>
 
-      <div className="px-4 mb-3 grid grid-cols-2 gap-2">
+      <div className="px-4 mb-3 grid grid-cols-3 gap-2">
         <button
           type="button"
           onClick={() => setShowPaymentModal(true)}
-          className="flex items-center justify-center gap-1.5 bg-green-500 text-white py-2.5 rounded-xl font-semibold text-sm active:bg-green-600 transition-colors"
+          className="flex items-center justify-center gap-1.5 bg-green-500 text-white py-2.5 rounded-xl font-semibold text-xs active:bg-green-600 transition-colors"
         >
           <Plus className="w-4 h-4" />
-          जमा / एडवांस
+          जमा
         </button>
         <button
           type="button"
           onClick={sendWhatsAppReminder}
-          className="flex items-center justify-center gap-1.5 bg-emerald-500 text-white py-2.5 rounded-xl font-semibold text-sm active:bg-emerald-600 transition-colors"
+          className="flex items-center justify-center gap-1.5 bg-emerald-500 text-white py-2.5 rounded-xl font-semibold text-xs active:bg-emerald-600 transition-colors"
         >
           <MessageCircle className="w-4 h-4" />
-          WhatsApp रिमाइंडर
+          रिमाइंडर
+        </button>
+        <button
+          type="button"
+          onClick={sendWhatsAppBill}
+          className="flex items-center justify-center gap-1.5 bg-teal-500 text-white py-2.5 rounded-xl font-semibold text-xs active:bg-teal-600 transition-colors"
+        >
+          <FileText className="w-4 h-4" />
+          बिल भेजें
         </button>
       </div>
 
