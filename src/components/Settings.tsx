@@ -61,6 +61,13 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
   const [ecOtpSent, setEcOtpSent] = useState(false);
   const [ecOtp, setEcOtp] = useState("");
   const [ecBusy, setEcBusy] = useState(false);
+  // resend cooldown (60s)
+  const [ecCooldown, setEcCooldown] = useState(0);
+  useEffect(() => {
+    if (ecCooldown <= 0) return;
+    const t = setTimeout(() => setEcCooldown(ecCooldown - 1), 1000);
+    return () => clearTimeout(t);
+  }, [ecCooldown]);
 
   useEffect(() => {
     getVersion();
@@ -88,11 +95,13 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
       showMessage("⚠️ Ye to wahi purani email hai");
       return;
     }
+    if (ecCooldown > 0) return;
     setEcBusy(true);
     try {
       const { sendOTP } = await import("@/lib/edge");
       await sendOTP(newEmail, "email_change");
       setEcOtpSent(true);
+      setEcCooldown(60);
       showMessage(`📩 OTP ${newEmail} par bheja gaya! Purani email par kuch nahi jayega.`);
     } catch (e: any) {
       showMessage(`❌ ${e.message || "OTP nahi bheja gaya"}`);
@@ -348,10 +357,10 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
             <button
               type="button"
               onClick={handleEmailOtpSend}
-              disabled={ecBusy}
-              className="w-full text-center text-xs text-orange-600 font-semibold"
+              disabled={ecBusy || ecCooldown > 0}
+              className="w-full text-center text-xs text-orange-600 font-semibold disabled:opacity-60"
             >
-              OTP dobara bhejo
+              {ecCooldown > 0 ? `OTP dobara bhejo (${ecCooldown}s)` : "OTP dobara bhejo"}
             </button>
           </div>
         )}

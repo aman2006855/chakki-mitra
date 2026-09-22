@@ -69,3 +69,10 @@ export const testTable = pgTable("test_table", {
   name: varchar("name", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+// Generic rate limiting (fixed window) — login brute-force, OTP abuse, API spam
+export const rateLimits = pgTable("rate_limits", {
+  key: varchar("key", { length: 300 }).primaryKey(),
+  count: integer("count").default(1).notNull(),
+  windowStart: timestamp("window_start").defaultNow().notNull(),
+});

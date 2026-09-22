@@ -41,6 +41,13 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [showFNewPass, setShowFNewPass] = useState(false);
+  // resend cooldown (60s) — OTP dobara bhejne par 60s rukna padega
+  const [cooldown, setCooldown] = useState(0);
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown(cooldown - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
 
   const rememberAuth = (m: string) => {
     setLastAuth(m);
@@ -89,6 +96,7 @@ export default function LoginPage() {
         try {
           await sendOTP(finalEmail, "signup");
           setOtpSent(true);
+          setCooldown(60);
           setInfoMsg(`📩 OTP ${finalEmail} par bheja gaya! 5 min me use karo.`);
         } catch (er: any) {
           setErrorMsg(er.message || "OTP nahi bheja gaya");
@@ -142,13 +150,31 @@ export default function LoginPage() {
     }
   };
 
+  const handleSignupResend = async () => {
+    setErrorMsg("");
+    const target = email.trim();
+    if (!target) { setErrorMsg("Email dalo"); return; }
+    if (cooldown > 0) return;
+    setOtpSending(true);
+    try {
+      await sendOTP(target, "signup");
+      setCooldown(60);
+      setInfoMsg(`📩 OTP dobara ${target} par bheja gaya!`);
+    } catch (e: any) {
+      setErrorMsg(e.message || "OTP nahi bheja gaya");
+    }
+    setOtpSending(false);
+  };
+
   const handleForgotSend = async () => {
     setErrorMsg("");
     if (!fEmail) { setErrorMsg("Email dalo"); return; }
+    if (cooldown > 0) return;
     setFBusy(true);
     try {
       await sendOTP(fEmail, "password_reset");
       setFOtpSent(true);
+      setCooldown(60);
       setInfoMsg(`📩 OTP ${fEmail} par bheja gaya!`);
     } catch (e: any) {
       setErrorMsg(e.message || "OTP nahi bheja gaya");
@@ -235,7 +261,7 @@ export default function LoginPage() {
                   <button type="button" onClick={handleForgotReset} disabled={fBusy} className="w-full flex items-center justify-center py-3.5 rounded-xl bg-green-500 text-white font-bold active:bg-green-600 transition-all disabled:opacity-50">
                     {fBusy ? "Ruko..." : "✅ Password Reset Karo"}
                   </button>
-                  <button type="button" onClick={handleForgotSend} disabled={fBusy} className="w-full text-center text-xs text-orange-600 font-semibold">OTP dobara bhejo</button>
+                  <button type="button" onClick={handleForgotSend} disabled={fBusy || cooldown > 0} className="w-full text-center text-xs text-orange-600 font-semibold disabled:opacity-50">{cooldown > 0 ? `OTP dobara bhejo (${cooldown}s)` : "OTP dobara bhejo"}</button>
                 </div>
               )}
               {errorMsg && (
@@ -350,6 +376,9 @@ export default function LoginPage() {
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-gray-50/50 focus:bg-white transition-colors text-center tracking-[0.5em] font-bold"
                   />
+                  <button type="button" onClick={handleSignupResend} disabled={otpSending || cooldown > 0} className="w-full text-center text-xs text-orange-600 font-semibold mt-2 disabled:opacity-50">
+                    {cooldown > 0 ? `OTP dobara bhejo (${cooldown}s)` : "📩 OTP nahi aaya? Dobara bhejo"}
+                  </button>
                 </div>
               )}
               

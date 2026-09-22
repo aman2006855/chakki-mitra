@@ -175,7 +175,27 @@ CREATE INDEX idx_email_otps_expires ON email_otps(expires_at);
 
 ---
 
-## 8. Email Template
+## 8. Rate Limiting (API Abuse Protection)
+
+> PDF security doc (Section 6) ke hisaab se lagaya gaya.
+
+Server-side limits (`src/lib/rate-limit.ts` — DB-backed fixed window, `rate_limits` table):
+
+| Endpoint | Key | Limit |
+|----------|-----|-------|
+| `POST /api/auth/email` (login/signup) | per IP | 10/min |
+| Wrong password | per email | 5 fails → 15 min lockout |
+| `POST /api/auth/otp/verify` | per email+purpose | 10 per 10 min |
+| Edge `send-otp` | per email+purpose | 3 per 10 min |
+| OTP record | per record | 5 wrong attempts |
+
+Client-side: OTP resend buttons par **60s cooldown** with countdown (login signup/forgot + Settings email change).
+
+Naye project me: `RATE_LIMIT_TABLE.sql` run karo + `src/lib/rate-limit.ts` copy karo + routes me `checkRateLimit()` lagao.
+
+---
+
+## 9. Email Template
 
 The OTP email sent via Brevo includes:
 - Green branded header (Chakki Mitra logo)

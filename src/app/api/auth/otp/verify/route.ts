@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { emailOtps } from "@/db/schema";
 import { eq, and, gte } from "drizzle-orm";
 import { ok, err, options } from "@/lib/cors";
+import { checkRateLimit, resetRateLimit } from "@/lib/rate-limit";
 import { createHash } from "crypto";
 
 export function OPTIONS() {
@@ -18,6 +19,12 @@ export async function POST(req: Request) {
 
     if (code.length !== 6 || !/^\d{6}$/.test(code)) {
       return err("6-digit OTP dalo", 400);
+    }
+
+    // OTP guessing protection: max 10 verify attempts per email per 10 min
+    const vLimit = await checkRateLimit(`otpverify:${email.toLowerCase()}:${purpose}`, 10, 600);
+    if (!vLimit.allowed) {
+      return err(`Bahut attempts. ${Math.ceil(vLimit.retryAfterSec / 60)} min baad naya OTP bhejo.`, 429);
     }
 
     // Hash the submitted OTP
@@ -66,11 +73,12 @@ export async function POST(req: Request) {
       return err("Bahut zyada galat attempts. Naya OTP bhejo.", 429);
     }
 
-    // Mark as used
+    // Mark as used + reset guess counter on success
     await db
       .update(emailOtps)
       .set({ used: true })
       .where(eq(emailOtps.id, record.id));
+    await resetRateLimit(`otpverify:${email.toLowerCase()}:${purpose}`);
 
     return ok({ success: true, email: email.toLowerCase() });
   } catch (e) {
