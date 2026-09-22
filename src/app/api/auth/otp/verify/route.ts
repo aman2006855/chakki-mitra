@@ -21,30 +21,32 @@ export async function POST(req: Request) {
       return err("6-digit OTP dalo", 400);
     }
 
-    // OTP guessing protection: max 10 verify attempts per email per 10 min
-    const vLimit = await checkRateLimit(`otpverify:${email.toLowerCase()}:${purpose}`, 10, 600);
+    // OTP guessing protection + record lookup in PARALLEL (independent reads)
+    const codeHash = createHash("sha256").update(code).digest("hex");
+    const emailLower = email.toLowerCase();
+    const rlKey = `otpverify:${emailLower}:${purpose}`;
+
+    const [vLimit, [record]] = await Promise.all([
+      checkRateLimit(rlKey, 10, 600),
+      db
+        .select()
+        .from(emailOtps)
+        .where(
+          and(
+            eq(emailOtps.email, emailLower),
+            eq(emailOtps.codeHash, codeHash),
+            eq(emailOtps.purpose, purpose),
+            eq(emailOtps.used, false),
+            gte(emailOtps.expiresAt, new Date())
+          )
+        )
+        .orderBy(emailOtps.createdAt)
+        .limit(1),
+    ]);
+
     if (!vLimit.allowed) {
       return err(`Bahut attempts. ${Math.ceil(vLimit.retryAfterSec / 60)} min baad naya OTP bhejo.`, 429);
     }
-
-    // Hash the submitted OTP
-    const codeHash = createHash("sha256").update(code).digest("hex");
-
-    // Find matching OTP record
-    const [record] = await db
-      .select()
-      .from(emailOtps)
-      .where(
-        and(
-          eq(emailOtps.email, email.toLowerCase()),
-          eq(emailOtps.codeHash, codeHash),
-          eq(emailOtps.purpose, purpose),
-          eq(emailOtps.used, false),
-          gte(emailOtps.expiresAt, new Date())
-        )
-      )
-      .orderBy(emailOtps.createdAt)
-      .limit(1);
 
     if (!record) {
       // Check if expired OTP exists
@@ -53,7 +55,7 @@ export async function POST(req: Request) {
         .from(emailOtps)
         .where(
           and(
-            eq(emailOtps.email, email.toLowerCase()),
+            eq(emailOtps.email, emailLower),
             eq(emailOtps.purpose, purpose),
             eq(emailOtps.used, false)
           )
@@ -73,14 +75,13 @@ export async function POST(req: Request) {
       return err("Bahut zyada galat attempts. Naya OTP bhejo.", 429);
     }
 
-    // Mark as used + reset guess counter on success
-    await db
-      .update(emailOtps)
-      .set({ used: true })
-      .where(eq(emailOtps.id, record.id));
-    await resetRateLimit(`otpverify:${email.toLowerCase()}:${purpose}`);
+    // Mark as used + reset guess counter in PARALLEL
+    await Promise.all([
+      db.update(emailOtps).set({ used: true }).where(eq(emailOtps.id, record.id)),
+      resetRateLimit(rlKey),
+    ]);
 
-    return ok({ success: true, email: email.toLowerCase() });
+    return ok({ success: true, email: emailLower });
   } catch (e) {
     console.error("[otp_verify_error]", e);
     return err("Internal Server Error", 500);

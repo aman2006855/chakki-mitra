@@ -75,33 +75,7 @@ Deno.serve(async (req: Request) => {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const codeHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
-    // Store in email_otps table
-    const { error: insertError } = await supabaseAdmin.from("email_otps").insert({
-      email,
-      code_hash: codeHash,
-      purpose,
-      expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-      attempts: 0,
-      used: false,
-    });
-
-    if (insertError) {
-      console.error("Insert error:", insertError);
-      return new Response(
-        JSON.stringify({ error: "OTP store nahi ho paya" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Clean up old expired OTPs
-    Promise.resolve(
-      supabaseAdmin
-        .from("email_otps")
-        .delete()
-        .lt("expires_at", new Date().toISOString())
-    ).catch(() => {});
-
-    // Send email via Brevo API v3
+    // Email content pehle banao (parallel block ko chahiye)
     const purposeLabels: Record<string, string> = {
       signup: "Account Signup Verification",
       password_reset: "Password Reset",
@@ -145,7 +119,17 @@ Deno.serve(async (req: Request) => {
 </body>
 </html>`;
 
-    const brevoRes = await fetch("https://api.brevo.com/v3/smtp/email", {
+    // Store + Send in PARALLEL (dono independent hain) — ~40% faster
+    const insertPromise = supabaseAdmin.from("email_otps").insert({
+      email,
+      code_hash: codeHash,
+      purpose,
+      expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      attempts: 0,
+      used: false,
+    });
+
+    const brevoPromise = fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
         "api-key": brevoApiKey,
@@ -159,6 +143,24 @@ Deno.serve(async (req: Request) => {
         htmlContent: emailBody,
       }),
     });
+
+    const [{ error: insertError }, brevoRes] = await Promise.all([insertPromise, brevoPromise]);
+
+    if (insertError) {
+      console.error("Insert error:", insertError);
+      return new Response(
+        JSON.stringify({ error: "OTP store nahi ho paya" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Clean up old expired OTPs (fire-and-forget)
+    Promise.resolve(
+      supabaseAdmin
+        .from("email_otps")
+        .delete()
+        .lt("expires_at", new Date().toISOString())
+    ).catch(() => {});
 
     if (!brevoRes.ok) {
       const brevoErr = await brevoRes.text();

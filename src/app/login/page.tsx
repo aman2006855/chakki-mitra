@@ -49,6 +49,17 @@ export default function LoginPage() {
     const t = setTimeout(() => setCooldown(cooldown - 1), 1000);
     return () => clearTimeout(t);
   }, [cooldown]);
+  // app version (APK me footer me dikhega — bump verify karne ke liye)
+  const [appVersion, setAppVersion] = useState("");
+  useEffect(() => {
+    (async () => {
+      try {
+        const { App } = await import("@capacitor/app");
+        const info = await App.getInfo();
+        if (info?.version) setAppVersion(info.version);
+      } catch {}
+    })();
+  }, []);
 
   const rememberAuth = (m: string) => {
     setLastAuth(m);
@@ -442,6 +453,9 @@ export default function LoginPage() {
             <p className="text-xs text-orange-100">बिक्री रिपोर्ट</p>
           </div>
         </div>
+        {appVersion ? (
+          <p className="text-center text-[11px] text-orange-200/80 mt-4">v{appVersion}</p>
+        ) : null}
       </div>
     </div>
   );
