@@ -90,12 +90,8 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
     }
     setEcBusy(true);
     try {
-      const { getSupabase, friendlySupabaseError } = await import("@/lib/supabase");
-      const { error } = await getSupabase().auth.signInWithOtp({
-        email: newEmail,
-        options: { shouldCreateUser: true },
-      });
-      if (error) throw new Error(friendlySupabaseError(error.message));
+      const { sendOTP } = await import("@/lib/edge");
+      await sendOTP(newEmail, "email_change");
       setEcOtpSent(true);
       showMessage(`📩 OTP ${newEmail} par bheja gaya! Purani email par kuch nahi jayega.`);
     } catch (e: any) {
@@ -111,18 +107,19 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
     }
     setEcBusy(true);
     try {
-      const { getSupabase, friendlySupabaseError } = await import("@/lib/supabase");
-      const { data, error } = await getSupabase().auth.verifyOtp({
-        email: newEmail,
-        token: ecOtp,
-        type: "email",
-      });
-      if (error || !data.session) throw new Error(friendlySupabaseError(error?.message || ""));
-      const supabaseToken = data.session.access_token;
-      try { await getSupabase().auth.signOut(); } catch {}
-      const res = await api("/api/auth/email/change", {
+      const { api: apiFn } = await import("@/lib/api");
+      // Verify OTP
+      const vRes = await apiFn("/api/auth/otp/verify", {
         method: "POST",
-        body: JSON.stringify({ newEmail, supabaseToken }),
+        body: JSON.stringify({ email: newEmail, code: ecOtp, purpose: "email_change" }),
+      });
+      const vData = await vRes.json().catch(() => ({}));
+      if (!vRes.ok) throw new Error(vData.error || "OTP verify nahi ho paya");
+
+      // Change email
+      const res = await apiFn("/api/auth/email/change", {
+        method: "POST",
+        body: JSON.stringify({ newEmail }),
       });
       const rdata = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(rdata.error || "Email change nahi hua");

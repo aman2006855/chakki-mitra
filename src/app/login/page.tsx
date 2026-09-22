@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { getSupabase, friendlySupabaseError } from "@/lib/supabase";
+import { sendOTP } from "@/lib/edge";
 
 function getToken(): string | null {
   try {
@@ -83,13 +83,9 @@ export default function LoginPage() {
       if (!otpSent) {
         setOtpSending(true);
         try {
-          const { error } = await getSupabase().auth.signInWithOtp({
-            email: finalEmail,
-            options: { shouldCreateUser: true },
-          });
-          if (error) throw new Error(friendlySupabaseError(error.message));
+          await sendOTP(finalEmail, "signup");
           setOtpSent(true);
-          setInfoMsg(`📩 OTP ${finalEmail} par bheja gaya! 10 min me use karo.`);
+          setInfoMsg(`📩 OTP ${finalEmail} par bheja gaya! 5 min me use karo.`);
         } catch (er: any) {
           setErrorMsg(er.message || "OTP nahi bheja gaya");
         }
@@ -104,17 +100,14 @@ export default function LoginPage() {
 
     setSubmitting(true);
     try {
-      // Signup me pehle Supabase OTP verify, phir hamara account + JWT
-      let supabaseToken: string | undefined;
+      // Signup me OTP verify through our API, phir hamara account + JWT
       if (activeTab === "signup") {
-        const { data, error } = await getSupabase().auth.verifyOtp({
-          email: finalEmail,
-          token: otp,
-          type: "email",
+        const vRes = await api("/api/auth/otp/verify", {
+          method: "POST",
+          body: JSON.stringify({ email: finalEmail, code: otp, purpose: "signup" }),
         });
-        if (error || !data.session) throw new Error(friendlySupabaseError(error?.message || ""));
-        supabaseToken = data.session.access_token;
-        try { await getSupabase().auth.signOut(); } catch {}
+        const vData = await vRes.json().catch(() => ({}));
+        if (!vRes.ok) throw new Error(vData.error || "OTP verify nahi ho paya");
       }
       const res = await api("/api/auth/email", {
         method: "POST",
@@ -122,7 +115,6 @@ export default function LoginPage() {
           email: finalEmail,
           password: finalPassword,
           action: activeTab,
-          ...(activeTab === "signup" ? { supabaseToken } : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -151,11 +143,7 @@ export default function LoginPage() {
     if (!fEmail) { setErrorMsg("Email dalo"); return; }
     setFBusy(true);
     try {
-      const { error } = await getSupabase().auth.signInWithOtp({
-        email: fEmail,
-        options: { shouldCreateUser: true },
-      });
-      if (error) throw new Error(friendlySupabaseError(error.message));
+      await sendOTP(fEmail, "password_reset");
       setFOtpSent(true);
       setInfoMsg(`📩 OTP ${fEmail} par bheja gaya!`);
     } catch (e: any) {
@@ -170,17 +158,18 @@ export default function LoginPage() {
     if (!fNewPass || fNewPass.length < 6) { setErrorMsg("Naya password min 6 character ka ho"); return; }
     setFBusy(true);
     try {
-      const { data, error } = await getSupabase().auth.verifyOtp({
-        email: fEmail,
-        token: fCode,
-        type: "email",
+      // Verify OTP through our API
+      const vRes = await api("/api/auth/otp/verify", {
+        method: "POST",
+        body: JSON.stringify({ email: fEmail, code: fCode, purpose: "password_reset" }),
       });
-      if (error || !data.session) throw new Error(friendlySupabaseError(error?.message || ""));
-      const supabaseToken = data.session.access_token;
-      try { await getSupabase().auth.signOut(); } catch {}
+      const vData = await vRes.json().catch(() => ({}));
+      if (!vRes.ok) throw new Error(vData.error || "OTP verify nahi ho paya");
+
+      // Reset password through our API
       const res = await api("/api/auth/password/reset", {
         method: "POST",
-        body: JSON.stringify({ supabaseToken, newPassword: fNewPass }),
+        body: JSON.stringify({ email: fEmail, newPassword: fNewPass }),
       });
       const rdata = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(rdata.error || "Reset nahi ho paya");
