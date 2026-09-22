@@ -42,6 +42,8 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [showFNewPass, setShowFNewPass] = useState(false);
+  // remember me — email pre-fill (password kabhi save nahi hota)
+  const [rememberMe, setRememberMe] = useState(true);
   // resend cooldown (60s) — OTP dobara bhejne par 60s rukna padega
   const [cooldown, setCooldown] = useState(0);
   useEffect(() => {
@@ -72,7 +74,15 @@ export default function LoginPage() {
     ) : null;
 
   useEffect(() => {
-    try { setLastAuth(localStorage.getItem("chakki_mitra_last_auth") || ""); } catch {}
+    try {
+      setLastAuth(localStorage.getItem("chakki_mitra_last_auth") || "");
+      // Saved email pre-fill karo
+      const savedEmail = localStorage.getItem("chakki_mitra_remember_email") || "";
+      if (savedEmail) {
+        setEmail(savedEmail);
+        setRememberMe(true);
+      }
+    } catch {}
     const token = getToken();
     if (token) {
       router.replace("/");
@@ -146,6 +156,14 @@ export default function LoginPage() {
       if (data.error) throw new Error(data.error);
 
       rememberAuth("email");
+      // Remember me ON → email save; OFF → purani saved email hatao
+      try {
+        if (rememberMe && finalEmail) {
+          localStorage.setItem("chakki_mitra_remember_email", finalEmail);
+        } else {
+          localStorage.removeItem("chakki_mitra_remember_email");
+        }
+      } catch {}
       saveSession(data.userId, data.name || "", data.token, data.isRegistered, "");
 
       setTimeout(() => {
@@ -406,6 +424,21 @@ export default function LoginPage() {
                 <div className="bg-green-50 text-green-700 text-sm px-4 py-3 rounded-xl border border-green-100">
                   <p>{infoMsg}</p>
                 </div>
+              )}
+
+              {activeTab === "login" && (
+                <label className="flex items-center gap-2.5 cursor-pointer select-none py-1">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={rememberMe}
+                    onClick={() => setRememberMe(!rememberMe)}
+                    className={`relative w-10 h-[22px] rounded-full transition-colors shrink-0 ${rememberMe ? "bg-orange-500" : "bg-gray-300"}`}
+                  >
+                    <span className={`absolute top-[3px] w-4 h-4 rounded-full bg-white shadow transition-all ${rememberMe ? "left-[22px]" : "left-[3px]"}`} />
+                  </button>
+                  <span className="text-xs text-gray-600 font-medium">🔒 Remember me — agli baar email pehle se bhari hogi</span>
+                </label>
               )}
 
               <div className="relative">
