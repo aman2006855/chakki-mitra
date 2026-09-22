@@ -37,6 +37,10 @@ export default function LoginPage() {
   const [fCode, setFCode] = useState("");
   const [fNewPass, setFNewPass] = useState("");
   const [fBusy, setFBusy] = useState(false);
+  // password show/hide
+  const [showPw, setShowPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [showFNewPass, setShowFNewPass] = useState(false);
 
   const rememberAuth = (m: string) => {
     setLastAuth(m);
@@ -65,7 +69,7 @@ export default function LoginPage() {
 
     const form = e.target as HTMLFormElement;
     const emailInput = form.querySelector('input[type="email"]') as HTMLInputElement;
-    const passwordInput = form.querySelector('input[type="password"]') as HTMLInputElement;
+    const passwordInput = form.querySelector('input[name="password"]') as HTMLInputElement;
     const finalEmail = email || emailInput?.value || "";
     const finalPassword = password || passwordInput?.value || "";
 
@@ -222,7 +226,12 @@ export default function LoginPage() {
               ) : (
                 <div className="space-y-4">
                   <input inputMode="numeric" placeholder="6-digit OTP" value={fCode} onChange={(e) => setFCode(e.target.value.replace(/\D/g, "").slice(0, 6))} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 bg-gray-50/50 text-center tracking-[0.5em] font-bold" />
-                  <input type="password" placeholder="Naya password (min 6)" value={fNewPass} onChange={(e) => setFNewPass(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 bg-gray-50/50" />
+                  <div className="relative">
+                    <input type={showFNewPass ? "text" : "password"} placeholder="Naya password (min 6)" value={fNewPass} onChange={(e) => setFNewPass(e.target.value)} className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 bg-gray-50/50" />
+                    <button type="button" onClick={() => setShowFNewPass(!showFNewPass)} aria-label={showFNewPass ? "Password chhupao" : "Password dikhao"} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg">
+                      {showFNewPass ? "🙈" : "👁️"}
+                    </button>
+                  </div>
                   <button type="button" onClick={handleForgotReset} disabled={fBusy} className="w-full flex items-center justify-center py-3.5 rounded-xl bg-green-500 text-white font-bold active:bg-green-600 transition-all disabled:opacity-50">
                     {fBusy ? "Ruko..." : "✅ Password Reset Karo"}
                   </button>
@@ -298,30 +307,36 @@ export default function LoginPage() {
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-gray-50/50 focus:bg-white transition-colors"
                 />
               </div>
-              <div>
+              <div className="relative">
                 <input
-                  type="password"
+                  type={showPw ? "text" : "password"}
                   name="password"
                   placeholder="पासवर्ड (Password)"
                   value={password}
                   autoComplete="current-password"
                   onChange={(e) => setPassword(e.target.value)}
                   onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-gray-50/50 focus:bg-white transition-colors"
+                  className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-gray-50/50 focus:bg-white transition-colors"
                 />
+                <button type="button" onClick={() => setShowPw(!showPw)} aria-label={showPw ? "Password chhupao" : "Password dikhao"} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg">
+                  {showPw ? "🙈" : "👁️"}
+                </button>
               </div>
               {activeTab === "signup" && (
-                <div>
+                <div className="relative">
                     <input
-                      type="password"
+                      type={showConfirmPw ? "text" : "password"}
                       name="new-password"
                       placeholder="पासवर्ड की पुष्टि (Confirm Password)"
                     value={confirmPassword}
                     autoComplete="new-password"
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     onInput={(e) => setConfirmPassword((e.target as HTMLInputElement).value)}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-gray-50/50 focus:bg-white transition-colors"
+                    className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-gray-50/50 focus:bg-white transition-colors"
                   />
+                  <button type="button" onClick={() => setShowConfirmPw(!showConfirmPw)} aria-label={showConfirmPw ? "Password chhupao" : "Password dikhao"} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg">
+                    {showConfirmPw ? "🙈" : "👁️"}
+                  </button>
                 </div>
               )}
               
