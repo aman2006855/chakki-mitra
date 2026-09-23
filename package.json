@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "db:push": "drizzle-kit push --force",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "generate:icons": "npx @capacitor/assets generate --iconBackgroundColor '#ea580c'"
   },
   "dependencies": {
     "@capacitor/app": "6.0.3",
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@capacitor/android": "6.2.0",
+    "@capacitor/assets": "3.0.4",
     "@capacitor/cli": "6.2.0",
     "@capacitor/core": "6.2.0",
     "@tailwindcss/postcss": "4.1.17",

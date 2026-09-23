@@ -103,6 +103,9 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Generate Android icons
+        run: npm run generate:icons -- android
+
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
