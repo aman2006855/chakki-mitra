@@ -9,7 +9,6 @@ const config: CapacitorConfig = {
     captureInput: true,
     webContentsDebuggingEnabled: false,
     backgroundColor: "#ea580c",
-    icon: "assets/icon.png",
   },
   plugins: {
     BackgroundSms: {},
