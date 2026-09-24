@@ -9,6 +9,7 @@ All notable changes to this project are documented here. Format follows Keep a C
 - Settings me 🆘 Support section: Call/WhatsApp buttons (NEXT_PUBLIC_SUPPORT_PHONE se), in-app ticket form + mere tickets list with admin reply.
 - New API: GET/POST /api/support (10/hour spam guard) — tickets seedhe admin panel ke Support tab me dikhte hain.
 - Support auto-refresh: har 30s silent reload + manual Refresh button + naya admin jawab auto-expand with notice (tab display:none rehta hai isliye interval zaroori).
+- Header me 🎧 Support button (full-screen Help & Support sheet, slide-up animation) + admin jawab par red dot badge; Android back button pehle sheet band karta hai.
 - New APIs: GET /api/plans (active catalog), GET /api/subscriptions (current + history + totalSpent); new `subscriptions` table.
 - In-app APK auto-install update: ApkUpdater native plugin (in-app download + progress + auto installer via FileProvider), background periodic check (start + 15min + app-active), native-only (web skip), Browser fallback.
 - Update popup + Settings me APK download size display (~MB).

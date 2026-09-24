@@ -1,19 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Wheat, LogOut, Wifi, WifiOff } from "lucide-react";
+import { Wheat, LogOut, Wifi, WifiOff, Headphones } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { isOnline, onOnlineChange, getPendingOps } from "@/lib/offline-db";
+import { api } from "@/lib/api";
 
 interface HeaderProps {
   shopName: string;
   userName?: string;
+  onSupportClick?: () => void;
 }
 
-export default function Header({ shopName }: HeaderProps) {
+export default function Header({ shopName, onSupportClick }: HeaderProps) {
   const { logout } = useAuth();
   const [online, setOnline] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
+  const [supportDot, setSupportDot] = useState(false);
 
   useEffect(() => {
     setOnline(isOnline());
@@ -26,6 +29,25 @@ export default function Header({ shopName }: HeaderProps) {
     });
     const interval = setInterval(() => setPendingCount(getPendingOps().length), 3000);
     return () => { unsub(); clearInterval(interval); };
+  }, []);
+
+  // Admin ka jawab aaya ho to headphone par dot
+  useEffect(() => {
+    let stop = false;
+    async function checkSupport() {
+      try {
+        const res = await api("/api/support");
+        if (!res.ok || stop) return;
+        const d = await res.json();
+        const has = ((d.tickets || []) as any[]).some(
+          (t) => t.adminReply && ["new", "in_progress", "waiting"].includes(t.status)
+        );
+        setSupportDot(has);
+      } catch {}
+    }
+    checkSupport();
+    const t = setInterval(checkSupport, 60000);
+    return () => { stop = true; clearInterval(t); };
   }, []);
 
   return (
@@ -46,6 +68,18 @@ export default function Header({ shopName }: HeaderProps) {
                 <span className="ml-0.5 bg-white/20 rounded-full px-1">{pendingCount}</span>
               )}
             </div>
+            <button
+              type="button"
+              onClick={onSupportClick}
+              className="relative p-1.5 rounded-lg hover:bg-white/10 active:bg-white/20"
+              title="Support"
+              aria-label="Support"
+            >
+              <Headphones className="w-4 h-4 text-orange-100" />
+              {supportDot && (
+                <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-red-400 ring-2 ring-orange-600" />
+              )}
+            </button>
             <button
               onClick={logout}
               className="p-1.5 rounded-lg hover:bg-white/10 active:bg-white/20"

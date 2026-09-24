@@ -14,6 +14,7 @@ import KhataBook from "@/components/KhataBook";
 import Reports from "@/components/Reports";
 import Subscription from "@/components/Subscription";
 import Settings from "@/components/Settings";
+import SupportSheet from "@/components/SupportSheet";
 import { api } from "@/lib/api";
 
 type Tab = "home" | "khata" | "reports" | "plan" | "settings";
@@ -43,10 +44,13 @@ export default function App() {
     daliaRate: "8",
   });
   const [customers, setCustomers] = useState<CustomerData[]>([]);
+  const [supportOpen, setSupportOpen] = useState(false);
   const initialized = useRef(false);
   const authRedirected = useRef(false);
   const tabRef = useRef(tab);
   tabRef.current = tab;
+  const supportRef = useRef(supportOpen);
+  supportRef.current = supportOpen;
 
   useEffect(() => {
     if (loading || authRedirected.current) return;
@@ -64,7 +68,9 @@ export default function App() {
 
   useEffect(() => {
     const handler = CapacitorApp.addListener("backButton", ({ canGoBack }) => {
-      if (tabRef.current !== "home") {
+      if (supportRef.current) {
+        setSupportOpen(false);
+      } else if (tabRef.current !== "home") {
         setTab("home");
       } else {
         CapacitorApp.exitApp();
@@ -148,7 +154,7 @@ export default function App() {
   return (
     <div className="flex flex-col max-w-lg mx-auto bg-gray-50 relative" style={{ height: '100dvh', overflow: 'hidden' }}>
       <AutoUpdater />
-      <Header shopName={settings.shopName} />
+      <Header shopName={settings.shopName} onSupportClick={() => setSupportOpen(true)} />
       <PullToRefresh onRefresh={refreshData}>
         <main className="pb-20 flex-1 min-h-0">
           <div style={{ display: tab === "home" ? "block" : "none" }}>
@@ -170,6 +176,7 @@ export default function App() {
       </PullToRefresh>
       <BottomNav activeTab={tab} onTabChange={setTab} />
       <SmsPermissionPrompt />
+      {supportOpen && <SupportSheet onClose={() => setSupportOpen(false)} />}
     </div>
   );
 }
