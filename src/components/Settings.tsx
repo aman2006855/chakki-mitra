@@ -8,6 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { App } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import BackgroundSms from "@/plugins/background-sms";
+import ApkUpdater from "@/plugins/apk-updater";
+import type { PluginListenerHandle } from "@capacitor/core";
 import { isNativePlatform } from "@/lib/capacitor";
 import SmsDisclaimer from "./SmsDisclaimer";
 
@@ -54,6 +56,9 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState("");
   const [checkingUpdate, setCheckingUpdate] = useState(true);
+  const [installingUpdate, setInstallingUpdate] = useState(false);
+  const [installProgress, setInstallProgress] = useState(0);
+  const [installStatus, setInstallStatus] = useState<"downloading" | "installing" | "error" | "idle">("idle");
   const [smsGranted, setSmsGranted] = useState<boolean | null>(null);
   const [smsAsking, setSmsAsking] = useState(false);
   // email change
@@ -223,8 +228,44 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
   }
 
   async function handleDownloadUpdate() {
-    if (downloadUrl) {
-      await Browser.open({ url: downloadUrl });
+    if (!downloadUrl) return;
+    if (!isNativePlatform()) {
+      try { await Browser.open({ url: downloadUrl }); } catch {}
+      return;
+    }
+    setInstallingUpdate(true);
+    setInstallProgress(0);
+    setInstallStatus("downloading");
+    let handles: PluginListenerHandle[] = [];
+    try {
+      const progressH = await ApkUpdater.addListener("onDownloadProgress", (info) => {
+        setInstallProgress(info.progress || 0);
+      });
+      const errorH = await ApkUpdater.addListener("onDownloadError", (info) => {
+        for (const h of handles) { try { h.remove(); } catch {} }
+        handles = [];
+        setInstallStatus("error");
+        setInstallingUpdate(false);
+        showMessage(`❌ ${info.message || "Download failed"}`);
+      });
+      const completeH = await ApkUpdater.addListener("onDownloadComplete", () => {
+        for (const h of handles) { try { h.remove(); } catch {} }
+        handles = [];
+        setInstallStatus("installing");
+        setInstallingUpdate(false);
+        showMessage("✅ Download pura! Installer khul raha hai...");
+      });
+      handles = [progressH, errorH, completeH];
+
+      const fileName = `ChakkiMitra_v${latestVersion.replace(/^v/, "")}.apk`;
+      await ApkUpdater.downloadAndInstall({ url: downloadUrl, filename: fileName });
+      // installing state tab set hoga jab onDownloadComplete aaye
+    } catch {
+      // Plugin missing/purana APK — browser fallback
+      for (const h of handles) { try { h.remove(); } catch {} }
+      setInstallStatus("idle");
+      setInstallingUpdate(false);
+      try { await Browser.open({ url: downloadUrl }); } catch {}
     }
   }
 
@@ -555,13 +596,43 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
             {checkingUpdate ? (
               <span className="text-gray-400 text-xs">चेक हो रहा है...</span>
             ) : updateAvailable ? (
-              <button
-                onClick={handleDownloadUpdate}
-                className="flex items-center gap-1 text-orange-600 font-semibold text-xs active:text-orange-800"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                v{latestVersion} उपलब्ध
-              </button>
+              <div className="flex flex-col items-end gap-1.5">
+                {installingUpdate || installStatus === "installing" || installStatus === "error" ? (
+                  <>
+                    <span className={`text-xs font-semibold ${installStatus === "error" ? "text-red-600" : installStatus === "installing" ? "text-green-600" : "text-orange-600"}`}>
+                      {installStatus === "installing"
+                        ? "✅ Installer khul raha hai..."
+                        : installStatus === "error"
+                          ? "❌ Download fail — dobara try karo"
+                          : `${installProgress}% download...`}
+                    </span>
+                    {installStatus === "downloading" && (
+                      <div className="w-36 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-orange-500 to-orange-600 rounded-full transition-all duration-300"
+                          style={{ width: `${Math.max(3, installProgress)}%` }}
+                        />
+                      </div>
+                    )}
+                    <button
+                      onClick={handleDownloadUpdate}
+                      disabled={installStatus === "downloading"}
+                      className="flex items-center gap-1 text-orange-600 font-semibold text-xs active:text-orange-800 disabled:opacity-40"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      {installStatus === "error" ? "Retry" : installStatus === "installing" ? "Installer" : "Install"}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleDownloadUpdate}
+                    className="flex items-center gap-1 text-orange-600 font-semibold text-xs active:text-orange-800"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    v{latestVersion} उपलब्ध
+                  </button>
+                )}
+              </div>
             ) : (
               <span className="text-green-600 text-xs font-medium">✅ अपडेटेड</span>
             )}
