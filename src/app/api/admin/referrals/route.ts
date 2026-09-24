@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { sql, count } from "drizzle-orm";
 import { ok, err, options } from "@/lib/cors";
-import { requireAdmin, maskEmail } from "@/lib/admin-auth";
+import { requireAdmin, maskEmail, schemaErrorNote } from "@/lib/admin-auth";
 
 export function OPTIONS() {
   return options();
@@ -10,7 +10,7 @@ export function OPTIONS() {
 
 // GET — referral leaderboard + mapping stats
 export async function GET(request: Request) {
-  const auth = requireAdmin(request);
+  const auth = await requireAdmin(request);
   if (auth !== true) return auth;
 
   try {
@@ -92,6 +92,6 @@ export async function GET(request: Request) {
     });
   } catch (e) {
     console.error("[admin_referrals_error]", e);
-    return err("Internal Server Error", 500);
+    return err(schemaErrorNote(e), 500);
   }
 }

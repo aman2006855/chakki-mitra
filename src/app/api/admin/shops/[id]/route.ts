@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { users, customers, transactions, payments } from "@/db/schema";
 import { eq, count } from "drizzle-orm";
 import { ok, err, options } from "@/lib/cors";
-import { requireAdmin, maskEmail, maskPhone, isGuestEmail, writeAudit } from "@/lib/admin-auth";
+import { requireAdmin, maskEmail, maskPhone, isGuestEmail, writeAudit, schemaErrorNote } from "@/lib/admin-auth";
 
 export function OPTIONS() {
   return options();
@@ -12,7 +12,7 @@ type Params = { params: Promise<{ id: string }> };
 
 // GET — shop detail (read-only, PII masked)
 export async function GET(request: Request, { params }: Params) {
-  const auth = requireAdmin(request);
+  const auth = await requireAdmin(request);
   if (auth !== true) return auth;
 
   try {
@@ -56,13 +56,13 @@ export async function GET(request: Request, { params }: Params) {
     });
   } catch (e) {
     console.error("[admin_shop_detail_error]", e);
-    return err("Internal Server Error", 500);
+    return err(schemaErrorNote(e), 500);
   }
 }
 
 // PUT — activate / suspend (reason mandatory for suspend)
 export async function PUT(request: Request, { params }: Params) {
-  const auth = requireAdmin(request);
+  const auth = await requireAdmin(request);
   if (auth !== true) return auth;
 
   try {
@@ -107,6 +107,6 @@ export async function PUT(request: Request, { params }: Params) {
     return ok({ success: true, status: action === "suspend" ? "suspended" : "active" });
   } catch (e) {
     console.error("[admin_shop_status_error]", e);
-    return err("Internal Server Error", 500);
+    return err(schemaErrorNote(e), 500);
   }
 }

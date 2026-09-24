@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq, gte, count, sql, desc } from "drizzle-orm";
 import { ok, err, options } from "@/lib/cors";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAdmin, schemaErrorNote } from "@/lib/admin-auth";
 
 export function OPTIONS() {
   return options();
@@ -10,7 +10,7 @@ export function OPTIONS() {
 
 // GET — registration funnel + guest visibility
 export async function GET(request: Request) {
-  const auth = requireAdmin(request);
+  const auth = await requireAdmin(request);
   if (auth !== true) return auth;
 
   try {
@@ -97,6 +97,6 @@ export async function GET(request: Request) {
     });
   } catch (e) {
     console.error("[admin_funnel_error]", e);
-    return err("Internal Server Error", 500);
+    return err(schemaErrorNote(e), 500);
   }
 }

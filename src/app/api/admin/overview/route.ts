@@ -2,14 +2,14 @@ import { db } from "@/db";
 import { users, customers, transactions, payments, plans, supportTickets, auditLogs } from "@/db/schema";
 import { sql, eq, count, sum, gte } from "drizzle-orm";
 import { ok, err, options } from "@/lib/cors";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAdmin, schemaErrorNote } from "@/lib/admin-auth";
 
 export function OPTIONS() {
   return options();
 }
 
 export async function GET(request: Request) {
-  const auth = requireAdmin(request);
+  const auth = await requireAdmin(request);
   if (auth !== true) return auth;
 
   try {
@@ -100,6 +100,6 @@ export async function GET(request: Request) {
     });
   } catch (e) {
     console.error("[admin_overview_error]", e);
-    return err("Internal Server Error", 500);
+    return err(schemaErrorNote(e), 500);
   }
 }

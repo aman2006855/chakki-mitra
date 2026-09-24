@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { plans } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { ok, err, options } from "@/lib/cors";
-import { requireAdmin, writeAudit } from "@/lib/admin-auth";
+import { requireAdmin, writeAudit, schemaErrorNote } from "@/lib/admin-auth";
 
 export function OPTIONS() {
   return options();
@@ -18,7 +18,7 @@ function parseFeatures(raw: string | null): Record<string, boolean> {
 
 // GET — list plans (active first)
 export async function GET(request: Request) {
-  const auth = requireAdmin(request);
+  const auth = await requireAdmin(request);
   if (auth !== true) return auth;
 
   try {
@@ -31,13 +31,13 @@ export async function GET(request: Request) {
     );
   } catch (e) {
     console.error("[admin_plans_error]", e);
-    return err("Internal Server Error", 500);
+    return err(schemaErrorNote(e), 500);
   }
 }
 
 // POST — create plan
 export async function POST(request: Request) {
-  const auth = requireAdmin(request);
+  const auth = await requireAdmin(request);
   if (auth !== true) return auth;
 
   try {
@@ -86,13 +86,13 @@ export async function POST(request: Request) {
     return ok({ ...row, features: parseFeatures(row.features) });
   } catch (e) {
     console.error("[admin_plan_create_error]", e);
-    return err("Internal Server Error", 500);
+    return err(schemaErrorNote(e), 500);
   }
 }
 
 // PUT — update plan { id, ... }
 export async function PUT(request: Request) {
-  const auth = requireAdmin(request);
+  const auth = await requireAdmin(request);
   if (auth !== true) return auth;
 
   try {
@@ -144,6 +144,6 @@ export async function PUT(request: Request) {
     return ok({ ...row, features: parseFeatures(row.features) });
   } catch (e) {
     console.error("[admin_plan_update_error]", e);
-    return err("Internal Server Error", 500);
+    return err(schemaErrorNote(e), 500);
   }
 }

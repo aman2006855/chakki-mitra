@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { customers, transactions, payments } from "@/db/schema";
 import { eq, desc, and, sum } from "drizzle-orm";
 import { ok, err, options } from "@/lib/cors";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAdmin, schemaErrorNote } from "@/lib/admin-auth";
 
 export function OPTIONS() {
   return options();
@@ -12,7 +12,7 @@ type Params = { params: Promise<{ id: string }> };
 
 // Read-only ledger for one shop — edit/delete BILKUL nahi (ADMIN.md D)
 export async function GET(request: Request, { params }: Params) {
-  const auth = requireAdmin(request);
+  const auth = await requireAdmin(request);
   if (auth !== true) return auth;
 
   try {
@@ -65,6 +65,6 @@ export async function GET(request: Request, { params }: Params) {
     });
   } catch (e) {
     console.error("[admin_ledger_error]", e);
-    return err("Internal Server Error", 500);
+    return err(schemaErrorNote(e), 500);
   }
 }

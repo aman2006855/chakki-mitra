@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq, sql, desc, count, like, or, ilike, and } from "drizzle-orm";
 import { ok, err, options } from "@/lib/cors";
-import { requireAdmin, maskEmail, maskPhone, isGuestEmail } from "@/lib/admin-auth";
+import { requireAdmin, maskEmail, maskPhone, isGuestEmail, schemaErrorNote } from "@/lib/admin-auth";
 
 export function OPTIONS() {
   return options();
@@ -11,7 +11,7 @@ export function OPTIONS() {
 // GET /api/admin/shops?q=&filter=&page=&pageSize=
 // filter: all | registered | incomplete | guest | suspended
 export async function GET(request: Request) {
-  const auth = requireAdmin(request);
+  const auth = await requireAdmin(request);
   if (auth !== true) return auth;
 
   try {
@@ -90,6 +90,6 @@ export async function GET(request: Request) {
     });
   } catch (e) {
     console.error("[admin_shops_error]", e);
-    return err("Internal Server Error", 500);
+    return err(schemaErrorNote(e), 500);
   }
 }

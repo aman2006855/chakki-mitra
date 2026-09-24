@@ -1,7 +1,7 @@
 import { ok, err, options } from "@/lib/cors";
 import { checkRateLimit, getClientIp, resetRateLimit } from "@/lib/rate-limit";
 import { signAdminToken } from "@/lib/auth";
-import { writeAudit } from "@/lib/admin-auth";
+import { writeAudit, schemaErrorNote } from "@/lib/admin-auth";
 import crypto from "crypto";
 
 export function OPTIONS() {
@@ -59,6 +59,6 @@ export async function POST(req: Request) {
   } catch (e) {
     // Server-side log only (browser devtools me kabhi nahi dikhta)
     console.error("[admin_auth_error]", e);
-    return err("Internal Server Error", 500);
+    return err(schemaErrorNote(e), 500);
   }
 }

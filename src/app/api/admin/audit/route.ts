@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { auditLogs } from "@/db/schema";
 import { desc, sql, count } from "drizzle-orm";
 import { ok, err, options } from "@/lib/cors";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAdmin, schemaErrorNote } from "@/lib/admin-auth";
 
 export function OPTIONS() {
   return options();
@@ -10,7 +10,7 @@ export function OPTIONS() {
 
 // GET — append-only audit trail (read-only; koi edit/delete nahi)
 export async function GET(request: Request) {
-  const auth = requireAdmin(request);
+  const auth = await requireAdmin(request);
   if (auth !== true) return auth;
 
   try {
@@ -45,6 +45,6 @@ export async function GET(request: Request) {
     });
   } catch (e) {
     console.error("[admin_audit_error]", e);
-    return err("Internal Server Error", 500);
+    return err(schemaErrorNote(e), 500);
   }
 }

@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { rateLimits } from "@/db/schema";
 import { desc, count } from "drizzle-orm";
 import { ok, err, options } from "@/lib/cors";
-import { requireAdmin, writeAudit } from "@/lib/admin-auth";
+import { requireAdmin, writeAudit, schemaErrorNote } from "@/lib/admin-auth";
 
 export function OPTIONS() {
   return options();
@@ -25,7 +25,7 @@ function maskKey(key: string): string {
 
 // GET — live rate_limits (lockouts + throttles)
 export async function GET(request: Request) {
-  const auth = requireAdmin(request);
+  const auth = await requireAdmin(request);
   if (auth !== true) return auth;
 
   try {
@@ -61,13 +61,13 @@ export async function GET(request: Request) {
     });
   } catch (e) {
     console.error("[admin_security_error]", e);
-    return err("Internal Server Error", 500);
+    return err(schemaErrorNote(e), 500);
   }
 }
 
 // DELETE — manual unlock { key } (reason required)
 export async function DELETE(request: Request) {
-  const auth = requireAdmin(request);
+  const auth = await requireAdmin(request);
   if (auth !== true) return auth;
 
   try {
@@ -100,6 +100,6 @@ export async function DELETE(request: Request) {
     return ok({ success: deleted.length > 0, unlocked: deleted.length });
   } catch (e) {
     console.error("[admin_unlock_error]", e);
-    return err("Internal Server Error", 500);
+    return err(schemaErrorNote(e), 500);
   }
 }

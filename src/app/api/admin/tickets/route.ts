@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { supportTickets, users } from "@/db/schema";
 import { eq, desc, sql, count } from "drizzle-orm";
 import { ok, err, options } from "@/lib/cors";
-import { requireAdmin, maskEmail, writeAudit } from "@/lib/admin-auth";
+import { requireAdmin, maskEmail, writeAudit, schemaErrorNote } from "@/lib/admin-auth";
 
 export function OPTIONS() {
   return options();
@@ -10,7 +10,7 @@ export function OPTIONS() {
 
 // GET — list tickets (?status=)
 export async function GET(request: Request) {
-  const auth = requireAdmin(request);
+  const auth = await requireAdmin(request);
   if (auth !== true) return auth;
 
   try {
@@ -56,13 +56,13 @@ export async function GET(request: Request) {
     });
   } catch (e) {
     console.error("[admin_tickets_error]", e);
-    return err("Internal Server Error", 500);
+    return err(schemaErrorNote(e), 500);
   }
 }
 
 // POST — create ticket { userId?, subject, category, message, priority? }
 export async function POST(request: Request) {
-  const auth = requireAdmin(request);
+  const auth = await requireAdmin(request);
   if (auth !== true) return auth;
 
   try {
@@ -92,13 +92,13 @@ export async function POST(request: Request) {
     return ok(row);
   } catch (e) {
     console.error("[admin_ticket_create_error]", e);
-    return err("Internal Server Error", 500);
+    return err(schemaErrorNote(e), 500);
   }
 }
 
 // PUT — update { id, status?, adminReply?, resolutionNote?, priority?, assignee? }
 export async function PUT(request: Request) {
-  const auth = requireAdmin(request);
+  const auth = await requireAdmin(request);
   if (auth !== true) return auth;
 
   try {
@@ -132,6 +132,6 @@ export async function PUT(request: Request) {
     return ok(row);
   } catch (e) {
     console.error("[admin_ticket_update_error]", e);
-    return err("Internal Server Error", 500);
+    return err(schemaErrorNote(e), 500);
   }
 }

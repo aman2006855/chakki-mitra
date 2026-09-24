@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq, sql, count, desc, asc } from "drizzle-orm";
 import { ok, err, options } from "@/lib/cors";
-import { requireAdmin, maskEmail, writeAudit } from "@/lib/admin-auth";
+import { requireAdmin, maskEmail, writeAudit, schemaErrorNote } from "@/lib/admin-auth";
 
 export function OPTIONS() {
   return options();
@@ -10,7 +10,7 @@ export function OPTIONS() {
 
 // GET — credit reconciliation (balances + exhausted)
 export async function GET(request: Request) {
-  const auth = requireAdmin(request);
+  const auth = await requireAdmin(request);
   if (auth !== true) return auth;
 
   try {
@@ -93,13 +93,13 @@ export async function GET(request: Request) {
     });
   } catch (e) {
     console.error("[admin_credits_error]", e);
-    return err("Internal Server Error", 500);
+    return err(schemaErrorNote(e), 500);
   }
 }
 
 // POST — top-up { userId, amount, reason }
 export async function POST(request: Request) {
-  const auth = requireAdmin(request);
+  const auth = await requireAdmin(request);
   if (auth !== true) return auth;
 
   try {
@@ -143,6 +143,6 @@ export async function POST(request: Request) {
     });
   } catch (e) {
     console.error("[admin_topup_error]", e);
-    return err("Internal Server Error", 500);
+    return err(schemaErrorNote(e), 500);
   }
 }
