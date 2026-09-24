@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LifeBuoy, Phone, MessageCircle, Send, ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -45,6 +45,7 @@ interface Ticket {
 export default function Support() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [open, setOpen] = useState(false);
   const [subject, setSubject] = useState("");
   const [category, setCategory] = useState("general");
@@ -52,19 +53,38 @@ export default function Support() {
   const [sending, setSending] = useState(false);
   const [note, setNote] = useState("");
   const [expanded, setExpanded] = useState<number | null>(null);
+  const seenReplies = useRef<Map<number, string>>(new Map());
 
-  async function load() {
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
+    else setRefreshing(true);
     try {
       const res = await api("/api/support");
       if (res.ok) {
         const d = await res.json();
-        setTickets(d.tickets || []);
+        const list: Ticket[] = d.tickets || [];
+        setTickets(list);
+        // Naya/updated admin jawab aaye to auto-expand (background me aaya ho to notice bhi)
+        const fresh = list.find((t) => t.adminReply && seenReplies.current.get(t.id) !== t.adminReply);
+        if (fresh && fresh.adminReply) {
+          seenReplies.current.set(fresh.id, fresh.adminReply);
+          setExpanded(fresh.id);
+          if (silent) setNote("💬 Admin ka naya jawab aaya hai!");
+        }
+        for (const t of list) if (t.adminReply) seenReplies.current.set(t.id, t.adminReply);
       }
     } catch {}
     setLoading(false);
+    setRefreshing(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    // Admin ka jawab aate hi dikhe — har 30s silent refresh
+    // (Settings tab display:none se chhupta hai, unmount nahi hota — isliye interval zaroori)
+    const t = setInterval(() => load(true), 30000);
+    return () => clearInterval(t);
+  }, []);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -179,7 +199,17 @@ export default function Support() {
 
       {/* My tickets */}
       <div className="mt-3">
-        <div className="text-xs font-bold text-gray-600 mb-1.5">Mere tickets ({tickets.length})</div>
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="text-xs font-bold text-gray-600">Mere tickets ({tickets.length})</div>
+          <button
+            type="button"
+            onClick={() => load(true)}
+            disabled={refreshing}
+            className="text-[11px] font-bold text-orange-600 active:text-orange-800 disabled:opacity-40"
+          >
+            {refreshing ? "⏳..." : "🔄 Refresh"}
+          </button>
+        </div>
         {loading ? (
           <div className="space-y-2">
             {[0, 1].map((i) => (
