@@ -1,3 +1,4 @@
+import type { NextResponse } from "next/server";
 import { isAdminRequest } from "./auth";
 import { err } from "./cors";
 import { db } from "@/db";
