@@ -55,6 +55,7 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
   const [latestVersion, setLatestVersion] = useState("");
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState("");
+  const [downloadSize, setDownloadSize] = useState("");
   const [checkingUpdate, setCheckingUpdate] = useState(true);
   const [installingUpdate, setInstallingUpdate] = useState(false);
   const [installProgress, setInstallProgress] = useState(0);
@@ -220,6 +221,8 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
         if (apkAsset) {
           setLatestVersion(tag);
           setDownloadUrl(apkAsset.browser_download_url);
+          const bytes = Number(apkAsset.size) || 0;
+          setDownloadSize(bytes > 0 ? ` · ⬇ ~${(bytes / 1048576).toFixed(1)} MB` : "");
           setUpdateAvailable(true);
         }
       }
@@ -629,7 +632,7 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
                     className="flex items-center gap-1 text-orange-600 font-semibold text-xs active:text-orange-800"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
-                    v{latestVersion} उपलब्ध
+                    v{latestVersion} उपलब्ध{downloadSize}
                   </button>
                 )}
               </div>

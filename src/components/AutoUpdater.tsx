@@ -27,12 +27,19 @@ function isNewer(latest: string, current: string): boolean {
   return c > z;
 }
 
+function formatSize(bytes: number): string {
+  if (!bytes || bytes <= 0) return "";
+  const mb = bytes / (1024 * 1024);
+  return mb >= 1 ? `~${mb.toFixed(1)} MB` : `~${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
 type DownloadStatus = "idle" | "downloading" | "installing" | "error";
 
 export default function AutoUpdater() {
   const [showUpdate, setShowUpdate] = useState(false);
   const [releaseNotes, setReleaseNotes] = useState("");
   const [downloadUrl, setDownloadUrl] = useState("");
+  const [downloadSize, setDownloadSize] = useState("");
   const [latestVersion, setLatestVersion] = useState("");
   const [status, setStatus] = useState<DownloadStatus>("idle");
   const [progress, setProgress] = useState(0);
@@ -67,6 +74,7 @@ export default function AutoUpdater() {
       setLatestVersion(tag);
       setReleaseNotes(release.body || "");
       setDownloadUrl(apkAsset.browser_download_url);
+      setDownloadSize(formatSize(Number(apkAsset.size) || 0));
 
       const dismissedUntil = Number(localStorage.getItem(UPDATE_DISMISS_KEY) || 0);
       if (!dismissedUntil || Date.now() > dismissedUntil) {
@@ -154,7 +162,7 @@ export default function AutoUpdater() {
           </div>
           <h2 className="text-xl font-bold text-gray-900">अपडेट उपलब्ध है!</h2>
           <p className="text-sm text-gray-500 mt-1">
-            v{latestVersion}
+            v{latestVersion}{downloadSize ? ` · ⬇ ${downloadSize}` : ""}
           </p>
         </div>
 
