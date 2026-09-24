@@ -9,6 +9,7 @@ import { App } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import BackgroundSms from "@/plugins/background-sms";
 import ApkUpdater from "@/plugins/apk-updater";
+import Support from "./Support";
 import type { PluginListenerHandle } from "@capacitor/core";
 import { isNativePlatform } from "@/lib/capacitor";
 import SmsDisclaimer from "./SmsDisclaimer";
@@ -575,6 +576,8 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
           </label>
         </div>
       </div>
+
+      <Support />
 
       <button
         type="button"
