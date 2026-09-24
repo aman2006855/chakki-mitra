@@ -151,6 +151,11 @@ export default function AutoUpdater() {
     setErrorMsg("");
   }
 
+  async function handleBrowserDownload() {
+    if (!downloadUrl) return;
+    try { await Browser.open({ url: downloadUrl }); } catch {}
+  }
+
   if (!showUpdate) return null;
 
   return (
@@ -227,6 +232,14 @@ export default function AutoUpdater() {
             </div>
           )}
         </div>
+        {status === "error" && (
+          <button
+            onClick={handleBrowserDownload}
+            className="w-full mt-2 py-2.5 text-orange-600 font-semibold rounded-xl text-sm hover:bg-orange-50 transition-colors"
+          >
+            🌐 Browser se download karo
+          </button>
+        )}
       </div>
     </div>
   );

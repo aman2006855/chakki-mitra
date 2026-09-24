@@ -625,6 +625,14 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
                       <RefreshCw className="w-3.5 h-3.5" />
                       {installStatus === "error" ? "Retry" : installStatus === "installing" ? "Installer" : "Install"}
                     </button>
+                    {installStatus === "error" && downloadUrl && (
+                      <button
+                        onClick={async () => { try { await Browser.open({ url: downloadUrl }); } catch {} }}
+                        className="text-orange-500 text-[11px] underline underline-offset-2"
+                      >
+                        🌐 Browser se download karo
+                      </button>
+                    )}
                   </>
                 ) : (
                   <button

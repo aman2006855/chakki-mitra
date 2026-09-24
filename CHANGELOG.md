@@ -7,6 +7,7 @@ All notable changes to this project are documented here. Format follows Keep a C
 ### Added
 - In-app APK auto-install update: ApkUpdater native plugin (in-app download + progress + auto installer via FileProvider), background periodic check (start + 15min + app-active), native-only (web skip), Browser fallback.
 - Update popup + Settings me APK download size display (~MB).
+- Update fail hone par explicit "Browser se download karo" fallback button (popup + Settings).
 - Supabase Auth Email OTP for signup verification + forgot-password reset (hamara JWT session same; Supabase sirf OTP mailer+verifier, `/api/auth/password/reset`).
 - Settings me email change (OTP hamesha NAYI email par, `/api/auth/email/change`).
 - "Last used" badge on Email/Google login options.
