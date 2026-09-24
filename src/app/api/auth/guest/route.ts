@@ -5,7 +5,6 @@ import { signToken } from "@/lib/auth";
 
 export async function POST() {
   const [user] = await db.insert(users).values({ email: `guest-${Date.now()}@local`, name: "गेस्ट यूज़र" }).returning();
-  console.log("[guest] created user:", user.id, user.name);
   const token = signToken({ userId: user.id, name: user.name || "" });
   return NextResponse.json({
     token,

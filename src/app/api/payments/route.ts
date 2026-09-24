@@ -7,14 +7,14 @@ import { ok, err, options } from "@/lib/cors";
 export function OPTIONS() { return options(); }
 
 export async function GET(request: Request) {
-  const userId = getUserIdFromRequest(request);
+  const userId = await getUserIdFromRequest(request);
   if (!userId) return err("unauthorized", 401);
   const data = await db.select().from(payments).where(eq(payments.userId, userId)).orderBy(desc(payments.createdAt)).limit(100);
   return ok(data);
 }
 
 export async function POST(request: Request) {
-  const userId = getUserIdFromRequest(request);
+  const userId = await getUserIdFromRequest(request);
   if (!userId) return err("unauthorized", 401);
   const body = await request.json();
   const { customerId, amount, type, description } = body;

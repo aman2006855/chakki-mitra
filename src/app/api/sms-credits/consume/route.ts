@@ -11,7 +11,7 @@ export function OPTIONS() {
 // Atomic decrement: ek saath check + cut (race-safe)
 // Agar credit 0 ya usse kam hua to kuch nahi hota (0 rows) → 402
 export async function POST(request: Request) {
-  const userId = getUserIdFromRequest(request);
+  const userId = await getUserIdFromRequest(request);
   if (!userId) return err("unauthorized", 401);
 
   try {

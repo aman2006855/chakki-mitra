@@ -34,19 +34,30 @@ export function verifyToken(token: string): { userId: number; name: string } | n
   }
 }
 
-export function getUserIdFromRequest(request: Request): number | null {
+// Async: JWT verify + suspended account block (session revoke effect)
+export async function getUserIdFromRequest(request: Request): Promise<number | null> {
   const authHeader = request.headers.get("Authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
   const token = authHeader.slice(7);
   const session = verifyToken(token);
-  return session?.userId ?? null;
+  if (!session) return null;
+  // Lazy import se circular-dependency risk avoid
+  const { isUserActive } = await import("./admin-auth");
+  const active = await isUserActive(session.userId);
+  if (!active) return null;
+  return session.userId;
 }
 
-export function getSessionFromRequest(request: Request): { userId: number; name: string } | null {
+export async function getSessionFromRequest(request: Request): Promise<{ userId: number; name: string } | null> {
   const authHeader = request.headers.get("Authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
   const token = authHeader.slice(7);
-  return verifyToken(token);
+  const session = verifyToken(token);
+  if (!session) return null;
+  const { isUserActive } = await import("./admin-auth");
+  const active = await isUserActive(session.userId);
+  if (!active) return null;
+  return session;
 }
 
 // ---- Admin token (separate from shop tokens — role claim ke saath) ----

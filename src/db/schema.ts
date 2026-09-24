@@ -19,6 +19,10 @@ export const users = pgTable("users", {
   smsCredits: integer("sms_credits").default(50),
   referralCode: varchar("referral_code", { length: 40 }).unique(),
   referredBy: varchar("referred_by", { length: 40 }),
+  // Admin: account status — active | suspended (data delete nahi hota)
+  status: varchar("status", { length: 20 }).default("active"),
+  statusReason: text("status_reason").default(""),
+  lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -78,4 +82,46 @@ export const rateLimits = pgTable("rate_limits", {
   key: varchar("key", { length: 300 }).primaryKey(),
   count: integer("count").default(1).notNull(),
   windowStart: timestamp("window_start").defaultNow().notNull(),
+});
+
+// Append-only admin audit trail (ADMIN.md I) — never update/delete rows
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  actor: varchar("actor", { length: 100 }).notNull().default("admin"),
+  role: varchar("role", { length: 40 }).notNull().default("super_admin"),
+  action: varchar("action", { length: 100 }).notNull(),
+  targetType: varchar("target_type", { length: 40 }),
+  targetId: varchar("target_id", { length: 60 }),
+  reason: text("reason").default(""),
+  outcome: varchar("outcome", { length: 40 }).notNull().default("success"),
+  detail: text("detail").default(""),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Plans catalog — admin CRUD (ADMIN.md G). Hardcoded modal → API-driven.
+export const plans = pgTable("plans", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description").default(""),
+  priceInr: integer("price_inr").notNull(),
+  durationDays: integer("duration_days").notNull(),
+  smsQuota: integer("sms_quota").default(0), // 0 = none, -1 = unlimited
+  active: boolean("active").default(true),
+  features: text("features").default("{}"), // JSON flags
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Support tickets (ADMIN.md H) — simple lifecycle
+export const supportTickets = pgTable("support_tickets", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id"),
+  subject: varchar("subject", { length: 300 }).notNull(),
+  category: varchar("category", { length: 40 }).default("other"),
+  status: varchar("status", { length: 30 }).default("new"),
+  priority: varchar("priority", { length: 20 }).default("medium"),
+  message: text("message").default(""),
+  adminReply: text("admin_reply").default(""),
+  resolutionNote: text("resolution_note").default(""),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });

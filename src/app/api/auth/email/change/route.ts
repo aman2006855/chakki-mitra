@@ -13,7 +13,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // POST { newEmail } → OTP already verified, just change email (login zaroori)
 export async function POST(req: Request) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return err("unauthorized", 401);
     const { newEmail } = await req.json();
     if (!newEmail || !EMAIL_RE.test(newEmail)) return err("Sahi nayi email dalo.", 400);

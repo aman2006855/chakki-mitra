@@ -7,7 +7,7 @@ import { ok, err, options } from "@/lib/cors";
 export function OPTIONS() { return options(); }
 
 export async function GET(request: Request) {
-  const userId = getUserIdFromRequest(request);
+  const userId = await getUserIdFromRequest(request);
   if (!userId) return err("unauthorized", 401);
   const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!user.length) return err("not found", 404);
@@ -22,17 +22,26 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const userId = getUserIdFromRequest(request);
+  const userId = await getUserIdFromRequest(request);
   if (!userId) return err("unauthorized", 401);
   const body = await request.json();
-  await db.update(users).set(body).where(eq(users.id, userId));
+  // Whitelist — status/smsCredits/referral fields client se kabhi set nahi honge
+  const allowed: Record<string, unknown> = {};
+  for (const k of ["shopName", "shopPhone", "attaRate", "daliaRate", "name", "phone", "isRegistered"] as const) {
+    if (k in body) allowed[k] = body[k];
+  }
+  await db.update(users).set(allowed).where(eq(users.id, userId));
   return ok({ success: true });
 }
 
 export async function POST(request: Request) {
-  const userId = getUserIdFromRequest(request);
+  const userId = await getUserIdFromRequest(request);
   if (!userId) return err("unauthorized", 401);
   const body = await request.json();
-  await db.update(users).set(body).where(eq(users.id, userId));
+  const allowed: Record<string, unknown> = {};
+  for (const k of ["shopName", "shopPhone", "attaRate", "daliaRate", "name", "phone", "isRegistered"] as const) {
+    if (k in body) allowed[k] = body[k];
+  }
+  await db.update(users).set(allowed).where(eq(users.id, userId));
   return ok({ success: true });
 }

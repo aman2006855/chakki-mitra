@@ -40,6 +40,9 @@ export async function POST(req: Request) {
       if (!user) {
         return err("यह अकाउंट मौजूद नहीं है। कृपया नया अकाउंट बनाएं।", 404);
       }
+      if ((user.status || "active") === "suspended") {
+        return err("यह अकाउंट निलंबित है। सहायता से संपर्क करें।", 403);
+      }
       if (!verifyPassword(password, user.password || "")) {
         // Galat password: 5 fails per 15 min → temporary lockout
         const failLimit = await checkRateLimit(`loginfail:${email.toLowerCase()}`, 5, 900);
@@ -50,6 +53,9 @@ export async function POST(req: Request) {
       }
       // Success → fail counter reset
       await resetRateLimit(`loginfail:${email.toLowerCase()}`);
+      try {
+        await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
+      } catch {}
       if (!isHashed(user.password || "")) {
         try {
           await db.update(users).set({ password: hashPassword(password) }).where(eq(users.id, user.id));
@@ -90,6 +96,13 @@ export async function POST(req: Request) {
             .update(users)
             .set({ smsCredits: sql`coalesce(${users.smsCredits}, 0) + 20` })
             .where(eq(users.id, referrerId));
+          const { writeAudit, maskEmail } = await import("@/lib/admin-auth");
+          await writeAudit({
+            action: "referral.bonus",
+            targetType: "user",
+            targetId: String(referrerId),
+            detail: `+20 to referrer, +20 to new ${maskEmail(email)} via code`,
+          });
         } catch (e) {
           console.error("[referral_bonus_error]", e);
         }

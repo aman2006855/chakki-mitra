@@ -1,6 +1,7 @@
 import { ok, err, options } from "@/lib/cors";
 import { checkRateLimit, getClientIp, resetRateLimit } from "@/lib/rate-limit";
 import { signAdminToken } from "@/lib/auth";
+import { writeAudit } from "@/lib/admin-auth";
 import crypto from "crypto";
 
 export function OPTIONS() {
@@ -37,11 +38,22 @@ export async function POST(req: Request) {
     }
 
     if (!safeEqual(password, adminPassword)) {
+      await writeAudit({
+        action: "admin.login_failed",
+        outcome: "failure",
+        reason: "invalid password",
+        detail: `ip=${ip}`,
+      });
       return err("Galat password", 401);
     }
 
     // Success par lockout counter reset
     await resetRateLimit(`adminlogin:${ip}`);
+    await writeAudit({
+      action: "admin.login",
+      outcome: "success",
+      detail: `ip=${ip}`,
+    });
     const token = signAdminToken();
     return ok({ token, role: "admin" });
   } catch (e) {

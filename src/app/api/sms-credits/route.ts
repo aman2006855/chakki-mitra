@@ -19,7 +19,7 @@ function makeReferralCode(email: string): string {
 }
 
 export async function GET(request: Request) {
-  const userId = getUserIdFromRequest(request);
+  const userId = await getUserIdFromRequest(request);
   if (!userId) return err("unauthorized", 401);
 
   try {

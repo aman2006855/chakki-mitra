@@ -58,6 +58,9 @@ export async function GET(req: NextRequest) {
     }
 
     const user = userRow[0];
+    if ((user.status || "active") === "suspended") {
+      return NextResponse.redirect(new URL("/login?error=suspended", req.url));
+    }
     const token = signToken({ userId: user.id, name: user.name || "" });
     const registered = user.isRegistered ? "1" : "0";
     const name = user.name || "";

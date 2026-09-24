@@ -7,7 +7,7 @@ import { ok, err, options } from "@/lib/cors";
 export function OPTIONS() { return options(); }
 
 export async function GET(request: Request) {
-  const userId = getUserIdFromRequest(request);
+  const userId = await getUserIdFromRequest(request);
   if (!userId) return err("unauthorized", 401);
 
   const todayCredit = await db.select({ total: sum(transactions.amount) }).from(transactions).where(and(eq(transactions.paymentMode, "credit"), eq(transactions.userId, userId)));
