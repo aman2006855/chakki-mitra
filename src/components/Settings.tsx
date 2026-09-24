@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Download, Upload, RefreshCw, MessageSquareText, CheckCircle2, XCircle, Copy, Gift } from "lucide-react";
+import { Save, Download, Upload, RefreshCw, MessageSquareText, CheckCircle2, XCircle, Copy, Gift, BatteryWarning } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { App } from "@capacitor/app";
@@ -661,6 +661,20 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
             )}
           </div>
         </div>
+      </div>
+
+      <div className="bg-amber-50 rounded-xl border border-amber-200 p-4 shadow-sm">
+        <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
+          <BatteryWarning className="w-4 h-4 text-amber-600" /> 📴 App khud band ho jata hai?
+        </h3>
+        <ol className="text-xs text-gray-600 space-y-1 leading-relaxed list-decimal list-inside">
+          <li>Phone ki <b>Settings → Apps → चक्की मित्र</b> kholo</li>
+          <li><b>Battery</b> me <b>“No restrictions” / “Unrestricted”</b> karo</li>
+          <li>MIUI/ColorOS me <b>Autostart ON</b> + <b>🔒 app lock</b> (recent me lock) bhi karo</li>
+        </ol>
+        <p className="text-[11px] text-gray-400 mt-2">
+          Ye phone ka battery saver hota hai — app ki galti nahi. Upar wali setting se band hona ruk jayega.
+        </p>
       </div>
 
       <div className="text-center text-xs text-gray-400 py-2">

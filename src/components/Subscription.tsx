@@ -61,20 +61,24 @@ export default function Subscription() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [sub, setSub] = useState<SubData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const [pRes, sRes] = await Promise.all([api("/api/plans"), api("/api/subscriptions")]);
-        if (pRes.ok) {
-          const d = await pRes.json();
-          setPlans(d.plans || []);
-        }
-        if (sRes.ok) setSub(await sRes.json());
-      } catch {}
-      setLoading(false);
-    })();
-  }, []);
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
+    else setRefreshing(true);
+    try {
+      const [pRes, sRes] = await Promise.all([api("/api/plans"), api("/api/subscriptions")]);
+      if (pRes.ok) {
+        const d = await pRes.json();
+        setPlans(d.plans || []);
+      }
+      if (sRes.ok) setSub(await sRes.json());
+    } catch {}
+    setLoading(false);
+    setRefreshing(false);
+  }
+
+  useEffect(() => { load(); }, []);
 
   const current = sub?.current || null;
   const left = current ? daysLeft(current.endAt) : null;
@@ -100,10 +104,18 @@ export default function Subscription() {
         <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-md shadow-orange-200">
           <Crown className="w-5 h-5 text-white" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-lg font-bold text-gray-900 leading-tight">Subscription</h1>
           <p className="text-xs text-gray-500">Plans, history aur kharcha — sab ek jagah</p>
         </div>
+        <button
+          type="button"
+          onClick={() => load(true)}
+          disabled={refreshing}
+          className="text-[11px] font-bold text-orange-600 px-2.5 py-1.5 rounded-lg bg-orange-50 border border-orange-100 active:bg-orange-100 disabled:opacity-40"
+        >
+          {refreshing ? "⏳..." : "🔄 Refresh"}
+        </button>
       </div>
 
       {loading ? (
