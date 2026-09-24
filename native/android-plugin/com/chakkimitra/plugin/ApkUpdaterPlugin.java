@@ -28,31 +28,57 @@ public class ApkUpdaterPlugin extends Plugin {
 
     @PluginMethod
     public void downloadAndInstall(PluginCall call) {
-        String url = call.getString("url");
-        String filename = call.getString("filename", "chakki-mitra-update.apk");
-        if (url == null || url.isEmpty()) {
-            call.reject("URL is required");
-            return;
+        try {
+            String url = call.getString("url");
+            String filename = call.getString("filename", "chakki-mitra-update.apk");
+            if (url == null || url.isEmpty()) {
+                call.reject("URL is required");
+                return;
+            }
+            if (filename == null || filename.isEmpty()) filename = "chakki-mitra-update.apk";
+            // Path traversal guard — sirf plain filename
+            filename = new File(filename).getName();
+            if (isDownloading) {
+                call.reject("Download already in progress");
+                return;
+            }
+
+            Context ctx = getContext();
+            if (ctx == null) {
+                call.reject("App context not ready. Dobara try karo.");
+                return;
+            }
+
+            // External storage kabhi null ho sakta hai (unmounted devices) —
+            // NPE = app crash, isliye internal fallback
+            File baseDir = ctx.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+            if (baseDir == null) {
+                Log.w(TAG, "External dir null, internal fallback use ho raha hai");
+                baseDir = new File(ctx.getFilesDir(), "Download");
+            }
+            if (!baseDir.exists() && !baseDir.mkdirs()) {
+                call.reject("Storage not available. Dobara try karo.");
+                return;
+            }
+
+            isDownloading = true;
+            File destinationFile = new File(baseDir, filename);
+            if (destinationFile.exists()) destinationFile.delete();
+
+            Log.d(TAG, "Download started: " + url);
+            new Thread(() -> downloadFile(url, destinationFile)).start();
+
+            // NOTE: turant resolve — asli download background mein hota hai.
+            // Progress listeners ko turant remove mat karna — unhe
+            // onDownloadComplete / onDownloadError events ke andar hi cleanup karo.
+            JSObject ret = new JSObject();
+            ret.put("status", "downloading");
+            call.resolve(ret);
+        } catch (Exception e) {
+            Log.e(TAG, "downloadAndInstall failed", e);
+            isDownloading = false;
+            call.reject("Download shuru nahi ho paya: " + e.getMessage());
         }
-        if (isDownloading) {
-            call.reject("Download already in progress");
-            return;
-        }
-
-        isDownloading = true;
-        Context ctx = getContext();
-        File destinationFile = new File(ctx.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), filename);
-        if (destinationFile.exists()) destinationFile.delete();
-
-        Log.d(TAG, "Download started: " + url);
-        new Thread(() -> downloadFile(url, destinationFile)).start();
-
-        // NOTE: turant resolve — asli download background mein hota hai.
-        // Progress listeners ko turant remove mat karna — unhe
-        // onDownloadComplete / onDownloadError events ke andar hi cleanup karo.
-        JSObject ret = new JSObject();
-        ret.put("status", "downloading");
-        call.resolve(ret);
     }
 
     private void downloadFile(String url, File destinationFile) {
@@ -109,7 +135,7 @@ public class ApkUpdaterPlugin extends Plugin {
                         ret.put("progress", progress);
                         ret.put("downloaded", downloaded);
                         ret.put("total", totalSize);
-                        notifyListeners("onDownloadProgress", ret);
+                        notifyProgressSafe(ret);
                     }
                 }
             }
@@ -130,7 +156,7 @@ public class ApkUpdaterPlugin extends Plugin {
             Log.d(TAG, "Download complete: " + destinationFile.length() + " bytes");
             JSObject ret = new JSObject();
             ret.put("status", "completed");
-            notifyListeners("onDownloadComplete", ret);
+            notifyCompleteSafe(ret);
 
             launchInstaller(destinationFile);
             isDownloading = false;
@@ -167,8 +193,28 @@ public class ApkUpdaterPlugin extends Plugin {
     }
 
     private void notifyError(String message) {
-        JSObject ret = new JSObject();
-        ret.put("message", message);
-        notifyListeners("onDownloadError", ret);
+        try {
+            JSObject ret = new JSObject();
+            ret.put("message", message);
+            notifyListeners("onDownloadError", ret);
+        } catch (Exception e) {
+            Log.e(TAG, "notifyError failed", e);
+        }
+    }
+
+    private void notifyProgressSafe(JSObject data) {
+        try {
+            notifyListeners("onDownloadProgress", data);
+        } catch (Exception e) {
+            Log.e(TAG, "notifyProgress failed", e);
+        }
+    }
+
+    private void notifyCompleteSafe(JSObject data) {
+        try {
+            notifyListeners("onDownloadComplete", data);
+        } catch (Exception e) {
+            Log.e(TAG, "notifyComplete failed", e);
+        }
     }
 }

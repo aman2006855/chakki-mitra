@@ -233,6 +233,7 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
 
   async function handleDownloadUpdate() {
     if (!downloadUrl) return;
+    if (installingUpdate || installStatus === "downloading") return;
     if (!isNativePlatform()) {
       try { await Browser.open({ url: downloadUrl }); } catch {}
       return;
@@ -264,12 +265,20 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
       const fileName = `ChakkiMitra_v${latestVersion.replace(/^v/, "")}.apk`;
       await ApkUpdater.downloadAndInstall({ url: downloadUrl, filename: fileName });
       // installing state tab set hoga jab onDownloadComplete aaye
-    } catch {
-      // Plugin missing/purana APK — browser fallback
+    } catch (e: any) {
+      // Sirf plugin missing (purana APK) par browser fallback —
+      // transient error par error state (Retry + browser link already hai)
       for (const h of handles) { try { h.remove(); } catch {} }
-      setInstallStatus("idle");
-      setInstallingUpdate(false);
-      try { await Browser.open({ url: downloadUrl }); } catch {}
+      const msg = String(e?.message || "");
+      if (/not implemented|unavailable|not available|does not exist|undefined/i.test(msg)) {
+        setInstallStatus("idle");
+        setInstallingUpdate(false);
+        try { await Browser.open({ url: downloadUrl }); } catch {}
+      } else {
+        setInstallStatus("error");
+        setInstallingUpdate(false);
+        showMessage(`❌ ${msg || "Download failed. Retry karo."}`);
+      }
     }
   }
 
