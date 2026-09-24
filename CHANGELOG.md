@@ -5,6 +5,8 @@ All notable changes to this project are documented here. Format follows Keep a C
 ## [Unreleased]
 
 ### Added
+- Subscription tab (BottomNav me 5th tab): current plan hero + validity progress, total kharch / plans / SMS stats, plan cards with Coming Soon ribbon, buy history, shimmer + stagger animations.
+- New APIs: GET /api/plans (active catalog), GET /api/subscriptions (current + history + totalSpent); new `subscriptions` table.
 - In-app APK auto-install update: ApkUpdater native plugin (in-app download + progress + auto installer via FileProvider), background periodic check (start + 15min + app-active), native-only (web skip), Browser fallback.
 - Update popup + Settings me APK download size display (~MB).
 - Update fail hone par explicit "Browser se download karo" fallback button (popup + Settings).

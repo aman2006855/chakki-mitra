@@ -125,3 +125,16 @@ export const supportTickets = pgTable("support_tickets", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Subscriptions — shop ki plan buy history (payment gateway baad me judega;
+// tab tak status pending/coming-soon, UI me "Coming Soon" badge)
+export const subscriptions = pgTable("subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  planId: integer("plan_id").references(() => plans.id),
+  status: varchar("status", { length: 30 }).default("pending"),
+  pricePaid: integer("price_paid").default(0),
+  startAt: timestamp("start_at"),
+  endAt: timestamp("end_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});

@@ -1,7 +1,7 @@
-import { Home, BookText, BarChart3, Settings } from "lucide-react";
+import { Home, BookText, BarChart3, Settings, Crown } from "lucide-react";
 import { useId } from "react";
 
-type Tab = "home" | "khata" | "reports" | "settings";
+type Tab = "home" | "khata" | "reports" | "plan" | "settings";
 
 interface BottomNavProps {
   activeTab: Tab;
@@ -12,6 +12,7 @@ const tabs: { id: Tab; label: string; icon: typeof Home }[] = [
   { id: "home", label: "होम", icon: Home },
   { id: "khata", label: "खाता", icon: BookText },
   { id: "reports", label: "रिपोर्ट", icon: BarChart3 },
+  { id: "plan", label: "प्लान", icon: Crown },
   { id: "settings", label: "सेटिंग", icon: Settings },
 ];
 
@@ -47,7 +48,7 @@ export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
               <div
                 className="absolute top-0 w-12 h-0.5 bg-orange-500 rounded-b-full"
                 style={{
-                  left: `${tabs.findIndex((t) => t.id === id) * 25 + 12.5}%`,
+                  left: `${tabs.findIndex((t) => t.id === id) * 20 + 10}%`,
                   transform: "translateX(-50%)",
                 }}
               />

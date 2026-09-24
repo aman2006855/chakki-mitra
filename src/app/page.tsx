@@ -12,10 +12,11 @@ import SmsPermissionPrompt from "@/components/SmsPermissionPrompt";
 import QuickEntry from "@/components/QuickEntry";
 import KhataBook from "@/components/KhataBook";
 import Reports from "@/components/Reports";
+import Subscription from "@/components/Subscription";
 import Settings from "@/components/Settings";
 import { api } from "@/lib/api";
 
-type Tab = "home" | "khata" | "reports" | "settings";
+type Tab = "home" | "khata" | "reports" | "plan" | "settings";
 
 interface SettingsData {
   shopName: string;
@@ -158,6 +159,9 @@ export default function App() {
           </div>
           <div style={{ display: tab === "reports" ? "block" : "none" }}>
             <Reports />
+          </div>
+          <div style={{ display: tab === "plan" ? "block" : "none" }}>
+            <Subscription />
           </div>
           <div style={{ display: tab === "settings" ? "block" : "none" }}>
             <Settings settings={settings} onUpdate={refreshData} customers={customers} />

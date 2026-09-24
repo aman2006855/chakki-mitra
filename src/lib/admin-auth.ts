@@ -80,6 +80,16 @@ async function runEnsureSchema(): Promise<void> {
       count integer NOT NULL DEFAULT 1,
       window_start timestamp NOT NULL DEFAULT now()
     )`,
+    `CREATE TABLE IF NOT EXISTS subscriptions (
+      id serial PRIMARY KEY,
+      user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      plan_id integer REFERENCES plans(id),
+      status varchar(30) DEFAULT 'pending',
+      price_paid integer DEFAULT 0,
+      start_at timestamp,
+      end_at timestamp,
+      created_at timestamp DEFAULT now()
+    )`,
   ];
   // Independent statements — ek fail hone par baaki chalte rahe
   for (const stmt of statements) {
