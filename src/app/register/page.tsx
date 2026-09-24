@@ -79,8 +79,7 @@ export default function RegisterPage() {
         method: "POST",
         body: JSON.stringify(body),
       });
-      const result = await res.json();
-      console.log("[register] response:", JSON.stringify(result), "status:", res.status);
+      if (!res.ok) throw new Error("settings save failed");
 
       localStorage.setItem("chakki_mitra_settings", JSON.stringify(body));
       if (user) {
@@ -88,8 +87,7 @@ export default function RegisterPage() {
       }
 
       setTimeout(() => { router.replace("/"); }, 200);
-    } catch (e) {
-      console.error("[register] error:", e);
+    } catch {
       setError("सेव नहीं हो पाई, फिर से कोशिश करें");
     }
     setSaving(false);

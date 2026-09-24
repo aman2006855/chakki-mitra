@@ -33,7 +33,7 @@ export default function Reports() {
           dashData && typeof dashData.totalSales === "number" ? dashData : null
         );
       })
-      .catch(console.error)
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 

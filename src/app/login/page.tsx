@@ -179,7 +179,6 @@ export default function LoginPage() {
         }
       }, 300);
     } catch (e: any) {
-      console.error("[auth] error:", e);
       setErrorMsg(e.message || "लॉगिन में समस्या हुई");
       setSubmitting(false);
     }

@@ -52,8 +52,8 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
         const data = await res.json();
         setCustomerList(data);
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // silent
     }
     setLoading(false);
   };
@@ -89,8 +89,8 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
       setEditingCustomer(null);
       fetchCustomers();
       onRefresh();
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // silent
     }
   };
 
@@ -101,8 +101,8 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
       setDeletingCustomer(null);
       fetchCustomers();
       onRefresh();
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // silent
     }
   };
 

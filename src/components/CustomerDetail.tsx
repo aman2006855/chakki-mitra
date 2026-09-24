@@ -119,8 +119,8 @@ export default function CustomerDetail({
         setPayments(data.payments || []);
         setSummary(data.summary || {});
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // silent — UI me error state already handle hoti hai
     }
     setLoading(false);
   };

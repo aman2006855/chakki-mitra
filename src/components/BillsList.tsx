@@ -39,7 +39,7 @@ export default function BillsList({ customerId }: BillsListProps) {
         setBills(data.bills || []);
         setFinalBalance(data.finalBalance || 0);
       })
-      .catch(console.error)
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, [customerId]);
 

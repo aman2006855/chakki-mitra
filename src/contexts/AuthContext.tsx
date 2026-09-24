@@ -96,8 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isRegistered: Boolean(isReg),
         shopName: settingsData.shopName || "",
       });
-    } catch (e) {
-      console.error("[AuthProvider] error:", e);
+    } catch {
       setUser(null);
     }
     setLoading(false);

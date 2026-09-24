@@ -82,8 +82,8 @@ export default function QuickEntry({
     try {
       const res = await api("/api/dashboard");
       if (res.ok) setDashboard(await res.json());
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // silent
     }
   };
 
@@ -98,8 +98,8 @@ export default function QuickEntry({
         }));
         setRecentTxns(withCustomerNames.slice(0, 5));
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // silent
     }
   };
 
