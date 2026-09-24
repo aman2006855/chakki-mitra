@@ -3,9 +3,12 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, Plus, Minus, Save, UserPlus, Clock, ChevronRight } from "lucide-react";
 import AddCustomer from "./AddCustomer";
+import CreditsExhaustedModal from "./CreditsExhaustedModal";
+import SmsDisclaimer from "./SmsDisclaimer";
 import BackgroundSms from "@/plugins/background-sms";
 import { isNativePlatform } from "@/lib/capacitor";
 import { api } from "@/lib/api";
+import { API_BASE } from "@/lib/config";
 
 interface SettingsData {
   shopName: string;
@@ -54,6 +57,7 @@ export default function QuickEntry({
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showCreditsModal, setShowCreditsModal] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [dashboard, setDashboard] = useState<any>(null);
   const [recentTxns, setRecentTxns] = useState<RecentTransaction[]>([]);
@@ -107,6 +111,28 @@ export default function QuickEntry({
 
   const savingRef = useRef(false);
 
+  // Raw fetch: api() offline par POST ko queue karta hai — credit consume kabhi queue nahi hona chahiye
+  // status: 0 = network/offline (fail-open), 402 = credits khatam, 200 = consume ho gaya
+  const consumeSmsCredit = async (): Promise<{ status: number; ok: boolean; data: any }> => {
+    try {
+      let token: string | null = null;
+      try {
+        token = localStorage.getItem("chakki_mitra_token");
+      } catch {}
+      const res = await fetch(`${API_BASE}/api/sms-credits/consume`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      const data = await res.json().catch(() => ({}));
+      return { status: res.status, ok: res.ok, data };
+    } catch {
+      return { status: 0, ok: false, data: {} };
+    }
+  };
+
   const handleSave = async () => {
     if (savingRef.current) return;
     if (!customerId) {
@@ -155,58 +181,85 @@ export default function QuickEntry({
             const paymentLabel = paymentMode === "cash" ? "नगद" : "उधारी";
             const currentEntry = `📝 ${productLabel} ${weightNum}kg × ₹${rate}/kg = ₹${totalAmount.toFixed(0)} (${paymentLabel})`;
 
-            api(`/api/customers/detail?id=${customerId}`).then(async (detailRes) => {
-              if (!detailRes.ok) return;
-              const detail = await detailRes.json();
-              const txns = detail.transactions || [];
-              const summary = detail.summary || {};
+            (async () => {
+              try {
+                // 1. Credit check + consume (blueprint flow)
+                const credit = await consumeSmsCredit();
+                if (credit.status === 402) {
+                  setShowCreditsModal(true);
+                  return;
+                }
+                if (credit.status !== 0 && !credit.ok) {
+                  showMessage(
+                    { type: "error", text: `⚠️ ${credit.data?.error || "SMS क्रेडिट चेक नहीं हो पाया"}` },
+                    4000
+                  );
+                  return;
+                }
 
-              let attaKg = 0, attaAmount = 0, daliaKg = 0, daliaAmount = 0;
-              txns.forEach((t: any) => {
-                const w = parseFloat(t.weight) || 0;
-                const a = parseFloat(t.amount) || 0;
-                if (t.productType === "atta") { attaKg += w; attaAmount += a; }
-                else { daliaKg += w; daliaAmount += a; }
-              });
+                // 2. Customer detail → receipt text
+                const detailRes = await api(`/api/customers/detail?id=${customerId}`);
+                if (!detailRes.ok) return;
+                const detail = await detailRes.json();
+                const txns = detail.transactions || [];
+                const summary = detail.summary || {};
 
-              const lines = [
-                `🌾 *${settings.shopName}*`,
-                ``,
-                `👤 ${customer.name}`,
-                ``,
-                `━━━━━━━━━━━━━━`,
-                `🛒 *आज की पिसाई:*`,
-                `━━━━━━━━━━━━━━`,
-                currentEntry,
-                ``,
-                `📊 *कुल हिसाब:*`,
-                `━━━━━━━━━━━━━━`,
-              ];
+                let attaKg = 0, attaAmount = 0, daliaKg = 0, daliaAmount = 0;
+                txns.forEach((t: any) => {
+                  const w = parseFloat(t.weight) || 0;
+                  const a = parseFloat(t.amount) || 0;
+                  if (t.productType === "atta") { attaKg += w; attaAmount += a; }
+                  else { daliaKg += w; daliaAmount += a; }
+                });
 
-              if (attaKg > 0) lines.push(`🌾 आटा: ${attaKg.toFixed(0)}kg = *₹${attaAmount.toFixed(0)}*`);
-              if (daliaKg > 0) lines.push(`🥣 दलिया: ${daliaKg.toFixed(0)}kg = *₹${daliaAmount.toFixed(0)}*`);
+                const lines = [
+                  `🌾 *${settings.shopName}*`,
+                  ``,
+                  `👤 ${customer.name}`,
+                  ``,
+                  `━━━━━━━━━━━━━━`,
+                  `🛒 *आज की पिसाई:*`,
+                  `━━━━━━━━━━━━━━`,
+                  currentEntry,
+                  ``,
+                  `📊 *कुल हिसाब:*`,
+                  `━━━━━━━━━━━━━━`,
+                ];
 
-              lines.push(
-                ``,
-                `💰 कुल बिल: *₹${summary.totalBilled?.toFixed(0) || "0"}*`,
-                `✅ जमा: ₹${summary.totalJama?.toFixed(0) || "0"}`,
-              );
-              if (summary.totalAdvance > 0) lines.push(`🟢 एडवांस: ₹${summary.totalAdvance.toFixed(0)}`);
-              if (summary.pendingDues > 0) lines.push(`⏳ बकाया: *₹${summary.pendingDues.toFixed(0)}*`);
+                if (attaKg > 0) lines.push(`🌾 आटा: ${attaKg.toFixed(0)}kg = *₹${attaAmount.toFixed(0)}*`);
+                if (daliaKg > 0) lines.push(`🥣 दलिया: ${daliaKg.toFixed(0)}kg = *₹${daliaAmount.toFixed(0)}*`);
 
-              lines.push(
-                ``,
-                `🙏 धन्यवाद!`,
-                `📞 ${settings.shopPhone || settings.shopName}`,
-              );
+                lines.push(
+                  ``,
+                  `💰 कुल बिल: *₹${summary.totalBilled?.toFixed(0) || "0"}*`,
+                  `✅ जमा: ₹${summary.totalJama?.toFixed(0) || "0"}`,
+                );
+                if (summary.totalAdvance > 0) lines.push(`🟢 एडवांस: ₹${summary.totalAdvance.toFixed(0)}`);
+                if (summary.pendingDues > 0) lines.push(`⏳ बकाया: *₹${summary.pendingDues.toFixed(0)}*`);
 
-              const smsText = lines.join("\n");
-              return BackgroundSms.sendSms({ phoneNumber: customer.phone, message: smsText });
-            }).then(() => {
-              showMessage({ type: "success", text: "✅ SMS भेजा गया!" });
-            }).catch((e: any) => {
-              showMessage({ type: "error", text: `⚠️ SMS नहीं भेजा: ${e?.message || "unknown"}` }, 5000);
-            });
+                lines.push(
+                  ``,
+                  `🙏 धन्यवाद!`,
+                  `📞 ${settings.shopPhone || settings.shopName}`,
+                );
+
+                // 3. Native SMS bhejo
+                const smsText = lines.join("\n");
+                await BackgroundSms.sendSms({ phoneNumber: customer.phone, message: smsText });
+
+                // 4. Success toast with remaining credits (offline me count nahi)
+                if (credit.ok && typeof credit.data?.smsCredits === "number") {
+                  showMessage(
+                    { type: "success", text: `✅ SMS भेजा गया! बचे क्रेडिट: ${credit.data.smsCredits}` },
+                    4000
+                  );
+                } else {
+                  showMessage({ type: "success", text: "✅ SMS भेजा गया!" });
+                }
+              } catch (e: any) {
+                showMessage({ type: "error", text: `⚠️ SMS नहीं भेजा: ${e?.message || "unknown"}` }, 5000);
+              }
+            })();
           }
         }
       } else {
@@ -470,10 +523,17 @@ export default function QuickEntry({
         </button>
       </div>
 
+      {isNativePlatform() && <SmsDisclaimer />}
+
       <AddCustomer
         isOpen={showAddCustomer}
         onClose={() => setShowAddCustomer(false)}
         onSave={handleAddCustomer}
+      />
+
+      <CreditsExhaustedModal
+        isOpen={showCreditsModal}
+        onClose={() => setShowCreditsModal(false)}
       />
     </div>
   );

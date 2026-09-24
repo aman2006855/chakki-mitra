@@ -32,6 +32,8 @@ export default function LoginPage() {
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
   const [otpSending, setOtpSending] = useState(false);
+  // referral (signup) — optional, dono ko +20 credits
+  const [referralCode, setReferralCode] = useState("");
   // forgot password
   const [fEmail, setFEmail] = useState("");
   const [fOtpSent, setFOtpSent] = useState(false);
@@ -149,6 +151,9 @@ export default function LoginPage() {
           email: finalEmail,
           password: finalPassword,
           action: activeTab,
+          ...(activeTab === "signup" && referralCode.trim()
+            ? { referralCode: referralCode.trim() }
+            : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -397,6 +402,19 @@ export default function LoginPage() {
                 </div>
               )}
               
+              {activeTab === "signup" && (
+                <div>
+                  <input
+                    type="text"
+                    placeholder="रेफरल कोड (वैकल्पिक)"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-gray-50/50 focus:bg-white transition-colors"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1.5">🎁 दोस्त का कोड डालो → दोनों को +20 फ्री SMS क्रेडिट</p>
+                </div>
+              )}
+
               {activeTab === "signup" && otpSent && (
                 <div>
                   <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2 mb-3">📩 OTP email par bheja gaya! Neeche dalo.</p>

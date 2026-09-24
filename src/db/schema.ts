@@ -16,6 +16,9 @@ export const users = pgTable("users", {
   daliaRate: numeric("dalia_rate"),
   password: varchar("password", { length: 255 }),
   isRegistered: boolean("is_registered").default(false),
+  smsCredits: integer("sms_credits").default(50),
+  referralCode: varchar("referral_code", { length: 40 }).unique(),
+  referredBy: varchar("referred_by", { length: 40 }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

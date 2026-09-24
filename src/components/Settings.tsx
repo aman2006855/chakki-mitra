@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Download, Upload, RefreshCw, MessageSquareText, CheckCircle2, XCircle } from "lucide-react";
+import { Save, Download, Upload, RefreshCw, MessageSquareText, CheckCircle2, XCircle, Copy, Gift } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { App } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import BackgroundSms from "@/plugins/background-sms";
 import { isNativePlatform } from "@/lib/capacitor";
+import SmsDisclaimer from "./SmsDisclaimer";
 
 const GITHUB_REPO = "aman2006855/chakki-mitra";
 const GITHUB_API = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
@@ -63,6 +64,9 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
   const [ecBusy, setEcBusy] = useState(false);
   // resend cooldown (60s)
   const [ecCooldown, setEcCooldown] = useState(0);
+  // SMS credits + referral
+  const [smsCredits, setSmsCredits] = useState<number | null>(null);
+  const [referralCode, setReferralCode] = useState("");
   useEffect(() => {
     if (ecCooldown <= 0) return;
     const t = setTimeout(() => setEcCooldown(ecCooldown - 1), 1000);
@@ -74,7 +78,29 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
     checkUpdate();
     checkSmsPermission();
     fetchCurrentEmail();
+    fetchSmsCredits();
   }, []);
+
+  async function fetchSmsCredits() {
+    try {
+      const res = await api("/api/sms-credits");
+      if (res.ok) {
+        const d = await res.json();
+        setSmsCredits(typeof d.smsCredits === "number" ? d.smsCredits : null);
+        setReferralCode(d.referralCode || "");
+      }
+    } catch {}
+  }
+
+  async function copyReferralCode() {
+    if (!referralCode) return;
+    try {
+      await navigator.clipboard.writeText(referralCode);
+      showMessage("✅ रेफरल कोड कॉपी हो गया!");
+    } catch {
+      showMessage(`⚠️ कॉपी नहीं हुआ — कोड: ${referralCode}`);
+    }
+  }
 
   async function fetchCurrentEmail() {
     try {
@@ -406,6 +432,39 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
       </button>
 
       <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">📨 SMS क्रेडिट और रेफरल</h3>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-xl px-3 py-2.5">
+            <span className="text-sm text-orange-700 font-medium">बचे SMS क्रेडिट</span>
+            <span className="text-lg font-black text-orange-600">{smsCredits === null ? "—" : smsCredits}</span>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              <Gift className="w-3.5 h-3.5 inline mr-1" />
+              आपका रेफरल कोड — दोस्तों को भेजो, दोनों को +20 फ्री क्रेडिट
+            </label>
+            <div className="flex gap-2">
+              <div className="flex-1 px-3 py-2.5 rounded-lg border border-gray-300 bg-gray-50 font-mono font-bold text-sm text-gray-800 truncate">
+                {referralCode || "लोड हो रहा है..."}
+              </div>
+              <button
+                type="button"
+                onClick={copyReferralCode}
+                disabled={!referralCode}
+                className="flex items-center gap-1.5 px-4 rounded-lg bg-orange-500 text-white text-sm font-semibold active:bg-orange-600 disabled:opacity-50"
+              >
+                <Copy className="w-4 h-4" />
+                कॉपी
+              </button>
+            </div>
+          </div>
+          <p className="text-[11px] text-gray-500 leading-relaxed">
+            🆕 नया यूजर साइनअप पर <b>50 फ्री SMS क्रेडिट</b> पाता है। आपका कोड डालकर साइनअप करने पर दोनों को <b>+20</b> अतिरिक्त।
+          </p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">📩 SMS Permission</h3>
         {smsGranted === null ? (
           <p className="text-xs text-gray-400">Web par SMS permission लागू नहीं होती — ye sirf APK me dikhta hai. / SMS permission applies only in the Android app.</p>
@@ -444,6 +503,7 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
                 </div>
               </>
             )}
+            <SmsDisclaimer />
           </div>
         )}
       </div>

@@ -1,10 +1,20 @@
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { signToken } from "@/lib/auth";
 import { hashPassword, verifyPassword, isHashed } from "@/lib/password";
 import { ok, err, options } from "@/lib/cors";
 import { checkRateLimit, resetRateLimit, getClientIp } from "@/lib/rate-limit";
+
+function makeReferralCode(email: string): string {
+  const base =
+    (email.split("@")[0] || "CHAKKI")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 8) || "CHAKKI";
+  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `${base}${rand}`;
+}
 
 export async function OPTIONS() {
   return options();
@@ -12,7 +22,7 @@ export async function OPTIONS() {
 
 export async function POST(req: Request) {
   try {
-    const { email, password, action } = await req.json();
+    const { email, password, action, referralCode } = await req.json();
     if (!email || !password || !action) {
       return err("Email, password and action are required", 400);
     }
@@ -49,11 +59,41 @@ export async function POST(req: Request) {
       if (user) {
         return err("यह ईमेल पहले से रजिस्टर्ड है। कृपया लॉगिन करें।", 409);
       }
+
+      // Referral: valid code mila to dono ko +20 tokens
+      let referrerId: number | null = null;
+      if (typeof referralCode === "string" && referralCode.trim()) {
+        const code = referralCode.trim().toUpperCase();
+        const [ref] = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.referralCode, code))
+          .limit(1);
+        if (ref) referrerId = ref.id;
+      }
+
       // OTP already verified by /api/auth/otp/verify before this call
-      [user] = await db.insert(users).values({
-        email,
-        password: hashPassword(password),
-      }).returning();
+      [user] = await db
+        .insert(users)
+        .values({
+          email,
+          password: hashPassword(password),
+          smsCredits: referrerId ? 70 : 50, // base 50 + referral bonus 20
+          referralCode: makeReferralCode(email),
+          referredBy: referrerId ? String(referrerId) : null,
+        })
+        .returning();
+
+      if (referrerId) {
+        try {
+          await db
+            .update(users)
+            .set({ smsCredits: sql`coalesce(${users.smsCredits}, 0) + 20` })
+            .where(eq(users.id, referrerId));
+        } catch (e) {
+          console.error("[referral_bonus_error]", e);
+        }
+      }
     } else {
       return err("Invalid action", 400);
     }
