@@ -71,6 +71,21 @@ export function isOnline(): boolean {
   return _isOnline;
 }
 
+function setOnlineState(value: boolean): void {
+  if (_isOnline === value) return;
+  _isOnline = value;
+  try {
+    onlineListeners.forEach((l) => l(value));
+  } catch {}
+}
+
+// Heartbeat: asli fetch result se state sudharo.
+// navigator.onLine WebView me jhooth bolta hai (airplane mode me bhi "online") —
+// fetch fail = sach me offline, fetch success = sach me online.
+export function reportNetworkResult(ok: boolean): void {
+  setOnlineState(ok);
+}
+
 export function onOnlineChange(cb: (online: boolean) => void): () => void {
   onlineListeners.push(cb);
   return () => { onlineListeners = onlineListeners.filter((l) => l !== cb); };
@@ -78,11 +93,9 @@ export function onOnlineChange(cb: (online: boolean) => void): () => void {
 
 if (typeof window !== "undefined") {
   window.addEventListener("online", () => {
-    _isOnline = true;
-    onlineListeners.forEach((l) => l(true));
+    setOnlineState(true);
   });
   window.addEventListener("offline", () => {
-    _isOnline = false;
-    onlineListeners.forEach((l) => l(false));
+    setOnlineState(false);
   });
 }

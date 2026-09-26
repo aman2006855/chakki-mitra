@@ -1,5 +1,5 @@
 import { API_BASE } from "./config";
-import { addPendingOp, isOnline } from "./offline-db";
+import { addPendingOp, isOnline, reportNetworkResult } from "./offline-db";
 import { cacheGet, cacheSet } from "./idb-cache";
 
 function getToken(): string | null {
@@ -63,7 +63,11 @@ export async function api(url: string, options?: RequestInit): Promise<Response>
       headers: buildHeaders(options?.headers as Record<string, string>),
       credentials: "omit",
     });
+    // Response aaya (chahe status kuch bhi) = net sach me chal raha hai
+    reportNetworkResult(true);
   } catch (e) {
+    // Fetch fail = sach me offline (navigator.onLine jhooth bhi bole to bhi)
+    reportNetworkResult(false);
     // Network fail (net gaya / server down / navigator.onLine ne jhooth bola):
     // GET ho to phone ka save data do, WRITE ho to queue me daalo (fake success)
     if (method === "GET") {
