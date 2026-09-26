@@ -90,6 +90,12 @@ async function runEnsureSchema(): Promise<void> {
       end_at timestamp,
       created_at timestamp DEFAULT now()
     )`,
+    `CREATE TABLE IF NOT EXISTS idempotency_keys (
+      key varchar(100) PRIMARY KEY,
+      user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      response text,
+      created_at timestamp DEFAULT now()
+    )`,
   ];
   // Independent statements — ek fail hone par baaki chalte rahe
   for (const stmt of statements) {

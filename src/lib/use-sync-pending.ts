@@ -16,6 +16,8 @@ async function syncPendingOp(op: { id: string; method: string; url: string; body
   const token = getToken();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
+  // Yahi opId server par dedupe key hai — retry par duplicate entry BILKUL nahi
+  if (op.id) headers["X-Idempotency-Key"] = op.id;
 
   const fullUrl = op.url.startsWith("http") ? op.url : `${API_BASE}${op.url}`;
   const res = await fetch(fullUrl, {
@@ -24,6 +26,7 @@ async function syncPendingOp(op: { id: string; method: string; url: string; body
     body: op.body ? JSON.stringify(op.body) : undefined,
     credentials: "omit",
   });
+  // Server idempotency se dedupe karta hai — dobara bhejna safe hai
   return res.ok;
 }
 

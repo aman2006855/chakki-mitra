@@ -138,3 +138,13 @@ export const subscriptions = pgTable("subscriptions", {
   endAt: timestamp("end_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+// Idempotency keys — offline sync retry par duplicate entry BILKUL nahi.
+// Client har write ke saath X-Idempotency-Key bhejta hai; server pehli baar
+// process karke result save karta hai, dobara wahi result (bina dobara likhe).
+export const idempotencyKeys = pgTable("idempotency_keys", {
+  key: varchar("key", { length: 100 }).primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  response: text("response"),
+  createdAt: timestamp("created_at").defaultNow(),
+});

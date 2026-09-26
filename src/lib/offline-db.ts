@@ -61,7 +61,46 @@ export function removePendingOp(id: string): void {
 }
 
 export function clearPendingOps(): void {
-  localStorage.setItem(PENDING_KEY, "[]");
+  try {
+    localStorage.setItem(PENDING_KEY, "[]");
+  } catch {}
+}
+
+// ---- Pending SMS ----
+// Offline/airplane me entry to queue ho jati hai, par SMS (cellular) nahi jata.
+// SMS text yahan save — net/cellular aane par ek-tap resend (banner se).
+const SMS_KEY = "cm_pending_sms";
+
+export interface PendingSms {
+  id: string;
+  phone: string;
+  message: string;
+  customerName: string;
+  timestamp: number;
+}
+
+export function getPendingSms(): PendingSms[] {
+  try {
+    return JSON.parse(localStorage.getItem(SMS_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+export function addPendingSms(sms: PendingSms): void {
+  try {
+    const list = getPendingSms();
+    // Same customer ka purana pending SMS replace (duplicate SMS na jaye)
+    const filtered = list.filter((s) => s.phone !== sms.phone || s.message !== sms.message);
+    filtered.push(sms);
+    localStorage.setItem(SMS_KEY, JSON.stringify(filtered.slice(-50)));
+  } catch {}
+}
+
+export function removePendingSms(id: string): void {
+  try {
+    localStorage.setItem(SMS_KEY, JSON.stringify(getPendingSms().filter((s) => s.id !== id)));
+  } catch {}
 }
 
 let onlineListeners: ((online: boolean) => void)[] = [];

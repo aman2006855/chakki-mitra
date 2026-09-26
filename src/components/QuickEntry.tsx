@@ -8,6 +8,7 @@ import SmsDisclaimer from "./SmsDisclaimer";
 import BackgroundSms from "@/plugins/background-sms";
 import { isNativePlatform } from "@/lib/capacitor";
 import { api } from "@/lib/api";
+import { addPendingSms } from "@/lib/offline-db";
 import { API_BASE } from "@/lib/config";
 
 interface SettingsData {
@@ -187,6 +188,21 @@ export default function QuickEntry({
             const currentEntry = `📝 ${productLabel} ${weightNum}kg × ₹${rate}/kg = ₹${totalAmount.toFixed(0)} (${paymentLabel})`;
 
             (async () => {
+              let smsText = "";
+              let smsQueued = false;
+              const queueThisSms = () => {
+                if (!smsText || smsQueued) return;
+                smsQueued = true;
+                try {
+                  addPendingSms({
+                    id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                    phone: customer.phone,
+                    message: smsText,
+                    customerName: customer.name,
+                    timestamp: Date.now(),
+                  });
+                } catch {}
+              };
               try {
                 // 1. Credit check + consume (blueprint flow)
                 const credit = await consumeSmsCredit();
@@ -202,12 +218,14 @@ export default function QuickEntry({
                   return;
                 }
 
-                // 2. Customer detail → receipt text
-                const detailRes = await api(`/api/customers/detail?id=${customerId}`);
-                if (!detailRes.ok) return;
-                const detail = await detailRes.json();
-                const txns = detail.transactions || [];
-                const summary = detail.summary || {};
+                // 2. Customer detail → receipt text (offline ho to cache; na mile to chhoti receipt)
+                let detail: any = null;
+                try {
+                  const detailRes = await api(`/api/customers/detail?id=${customerId}`);
+                  if (detailRes.ok) detail = await detailRes.json();
+                } catch {}
+                const txns = detail?.transactions || [];
+                const summary = detail?.summary || {};
 
                 let attaKg = 0, attaAmount = 0, daliaKg = 0, daliaAmount = 0;
                 txns.forEach((t: any) => {
@@ -248,8 +266,8 @@ export default function QuickEntry({
                   `📞 ${settings.shopPhone || settings.shopName}`,
                 );
 
-                // 3. Native SMS bhejo
-                const smsText = lines.join("\n");
+                // 3. Native SMS bhejo (fail ho to queue — banner se ek-tap resend)
+                smsText = lines.join("\n");
                 await BackgroundSms.sendSms({ phoneNumber: customer.phone, message: smsText });
 
                 // 4. Success toast with remaining credits (offline me count nahi)
@@ -262,7 +280,13 @@ export default function QuickEntry({
                   showMessage({ type: "success", text: "✅ SMS भेजा गया!" });
                 }
               } catch (e: any) {
-                showMessage({ type: "error", text: `⚠️ SMS नहीं भेजा: ${e?.message || "unknown"}` }, 5000);
+                // SMS fail (airplane/no cellular/permission) → queue, banner se ek-tap resend
+                queueThisSms();
+                if (smsQueued) {
+                  showMessage({ type: "success", text: "📩 SMS queue me — banner se ek-tap bhejo ⏳" }, 5000);
+                } else {
+                  showMessage({ type: "error", text: `⚠️ SMS नहीं भेजा: ${e?.message || "unknown"}` }, 5000);
+                }
               }
             })();
           }

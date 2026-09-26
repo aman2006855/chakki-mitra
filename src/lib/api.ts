@@ -24,6 +24,11 @@ export async function api(url: string, options?: RequestInit): Promise<Response>
   const fullUrl = url.startsWith("http") ? url : `${API_BASE}${url}`;
   const method = options?.method || "GET";
 
+  // Har WRITE ko unique idempotency id — online bhejo ya queue karo,
+  // server duplicate entry kabhi nahi banayega (retry/sync safe)
+  const opId =
+    method !== "GET" ? `${Date.now()}_${Math.random().toString(36).slice(2, 8)}` : "";
+
   // OFFLINE GET: phone me save data turant dikhao (chahe kitna purana ho)
   if (method === "GET" && !isOnline()) {
     const hit = await cacheGet(url);
@@ -40,7 +45,6 @@ export async function api(url: string, options?: RequestInit): Promise<Response>
   }
 
   if (method !== "GET" && !isOnline()) {
-    const opId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     let parsedBody: any = null;
     try {
       parsedBody = options?.body ? JSON.parse(options.body as string) : null;
@@ -60,7 +64,7 @@ export async function api(url: string, options?: RequestInit): Promise<Response>
   try {
     res = await fetch(fullUrl, {
       ...options,
-      headers: buildHeaders(options?.headers as Record<string, string>),
+      headers: buildHeaders({ ...(options?.headers as Record<string, string> | undefined), ...(opId ? { "X-Idempotency-Key": opId } : {}) }),
       credentials: "omit",
     });
     // Response aaya (chahe status kuch bhi) = net sach me chal raha hai
@@ -79,7 +83,7 @@ export async function api(url: string, options?: RequestInit): Promise<Response>
         });
       }
     } else {
-      const opId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      // Wahi opId jo header me jata — server retry ko pehchan lega
       let parsedBody: any = null;
       try {
         parsedBody = options?.body ? JSON.parse(options.body as string) : null;

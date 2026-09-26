@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { customers } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { getUserIdFromRequest } from "@/lib/auth";
+import { getIdempotencyKey, claimIdempotencyKey, saveIdempotencyResult } from "@/lib/idempotency";
 import { ok, err, options } from "@/lib/cors";
 
 export function OPTIONS() { return options(); }
@@ -16,8 +17,15 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const userId = await getUserIdFromRequest(request);
   if (!userId) return err("unauthorized", 401);
+  // Duplicate guard: retry/sync dobara aaye to wahi purana result (naya customer NAHI)
+  const idemKey = getIdempotencyKey(request);
+  if (idemKey) {
+    const prior = await claimIdempotencyKey(idemKey, userId);
+    if (prior.duplicate) return ok(prior.response ?? { deduped: true });
+  }
   const body = await request.json();
   const [row] = await db.insert(customers).values({ ...body, userId }).returning();
+  if (idemKey) await saveIdempotencyResult(idemKey, userId, row);
   return ok(row);
 }
 
