@@ -1,5 +1,12 @@
 import { API_BASE } from "./config";
-import { addPendingOp, isOnline, reportNetworkResult, requestNetworkProbe } from "./offline-db";
+import {
+  addPendingOp,
+  isOnline,
+  reportNetworkResult,
+  requestNetworkProbe,
+  getPendingCustomers,
+  isTempId,
+} from "./offline-db";
 import { cacheGet, cacheSet } from "./idb-cache";
 
 function getToken(): string | null {
@@ -20,14 +27,81 @@ function buildHeaders(extra?: Record<string, string>): Record<string, string> {
   return headers;
 }
 
+function parseBody(body: unknown): any {
+  if (!body) return null;
+  if (typeof body === "string") {
+    try {
+      return JSON.parse(body);
+    } catch {
+      return null;
+    }
+  }
+  return body;
+}
+
+function json(data: any, status = 200, headers: Record<string, string> = {}): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json", ...headers },
+  });
+}
+
+function queueWrite(opId: string, method: string, url: string, body: any): Response {
+  try {
+    addPendingOp({ id: opId, method, url, body, timestamp: Date.now() });
+  } catch {}
+  return json({ success: true, offline: true, opId });
+}
+
+// Offline khate (tmp_...) se judi koi bhi entry khata sync hone TAK queue me jayegi —
+// warna server "tmp_x" ko number samajh kar reject kar deta.
+function hasTempCustomerRef(body: any): boolean {
+  return !!(body && isTempId((body as any).customerId));
+}
+
+// Phone me bana offline khata list me dikhna chahiye — online list ke saath merge.
+// Server par aa chuka khata yahan se apne aap hat jata hai (self-cleanup).
+function mergePendingCustomers(url: string, data: any): any {
+  if (!Array.isArray(data) || !url.startsWith("/api/customers")) return data;
+  let pending: ReturnType<typeof getPendingCustomers> = [];
+  try {
+    pending = getPendingCustomers();
+  } catch {
+    return data;
+  }
+  if (!pending.length) return data;
+
+  const isDetail = url.startsWith("/api/customers/detail");
+  const seen = new Set(data.map((c: any) => String(c?.id)));
+  const extra: any[] = [];
+
+  for (const p of pending) {
+    const id = p.realId ?? p.tempId;
+    // Server me already hai → dobara mat jodo (realId mapping rehne do —
+    // purani temp id se bani entries ab bhi sahi khate par sync hongi)
+    if (seen.has(String(id)) || seen.has(p.tempId)) continue;
+    const base = {
+      id,
+      name: p.name,
+      phone: p.phone,
+      address: p.address,
+      createdAt: new Date(p.timestamp).toISOString(),
+      pendingSync: true,
+    };
+    extra.push(isDetail ? { ...base, dues: 0, advance: 0, totalCredit: 0 } : base);
+  }
+
+  return extra.length ? [...data, ...extra] : data;
+}
+
 export async function api(url: string, options?: RequestInit): Promise<Response> {
   const fullUrl = url.startsWith("http") ? url : `${API_BASE}${url}`;
   const method = options?.method || "GET";
+  const parsedBody = parseBody(options?.body);
 
   // Har WRITE ko unique idempotency id — online bhejo ya queue karo,
   // server duplicate entry kabhi nahi banayega (retry/sync safe)
-  const opId =
-    method !== "GET" ? `${Date.now()}_${Math.random().toString(36).slice(2, 8)}` : "";
+  const opId = method !== "GET" ? `${Date.now()}_${Math.random().toString(36).slice(2, 8)}` : "";
 
   // OFFLINE GET: phone me save data turant dikhao (chahe kitna purana ho)
   if (method === "GET" && !isOnline()) {
@@ -36,42 +110,30 @@ export async function api(url: string, options?: RequestInit): Promise<Response>
     requestNetworkProbe();
     const hit = await cacheGet(url);
     if (hit) {
-      return new Response(JSON.stringify(hit.data), {
-        status: 200,
-        headers: { "Content-Type": "application/json", "X-Cache": "offline", "X-Cache-Age": String(hit.timestamp || 0) },
+      return json(mergePendingCustomers(url, hit.data), 200, {
+        "X-Cache": "offline",
+        "X-Cache-Age": String(hit.timestamp || 0),
       });
     }
-    return new Response(JSON.stringify({ error: "offline" }), {
-      status: 503,
-      headers: { "Content-Type": "application/json" },
-    });
+    return json({ error: "offline" }, 503);
   }
 
-  if (method !== "GET" && !isOnline()) {
-    requestNetworkProbe();
-    let parsedBody: any = null;
-    try {
-      parsedBody = options?.body ? JSON.parse(options.body as string) : null;
-    } catch {
-      parsedBody = null;
-    }
-    try {
-      addPendingOp({ id: opId, method, url, body: parsedBody, timestamp: Date.now() });
-    } catch {}
-    return new Response(JSON.stringify({ success: true, offline: true, opId }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+  if (method !== "GET" && (!isOnline() || hasTempCustomerRef(parsedBody))) {
+    if (!isOnline()) requestNetworkProbe();
+    return queueWrite(opId, method, url, parsedBody);
   }
 
   let res: Response;
   try {
     res = await fetch(fullUrl, {
       ...options,
-      headers: buildHeaders({ ...(options?.headers as Record<string, string> | undefined), ...(opId ? { "X-Idempotency-Key": opId } : {}) }),
+      headers: buildHeaders({
+        ...((options?.headers as Record<string, string> | undefined) || {}),
+        ...(opId ? { "X-Idempotency-Key": opId } : {}),
+      }),
       credentials: "omit",
     });
-    // Response aaya (chahe status kuch bhi) = net sach me chal raha hai
+    // Response aaya (chaho status kuch bhi ho) = net sach me chal raha hai
     reportNetworkResult(true);
   } catch (e) {
     // Fetch fail = sach me offline (navigator.onLine jhooth bhi bole to bhi)
@@ -81,35 +143,24 @@ export async function api(url: string, options?: RequestInit): Promise<Response>
     if (method === "GET") {
       const hit = await cacheGet(url);
       if (hit) {
-        return new Response(JSON.stringify(hit.data), {
-          status: 200,
-          headers: { "Content-Type": "application/json", "X-Cache": "offline", "X-Cache-Age": String(hit.timestamp || 0) },
+        return json(mergePendingCustomers(url, hit.data), 200, {
+          "X-Cache": "offline",
+          "X-Cache-Age": String(hit.timestamp || 0),
         });
       }
     } else {
-      // Wahi opId jo header me jata — server retry ko pehchan lega
-      let parsedBody: any = null;
-      try {
-        parsedBody = options?.body ? JSON.parse(options.body as string) : null;
-      } catch {
-        parsedBody = null;
-      }
-      try {
-        addPendingOp({ id: opId, method, url, body: parsedBody, timestamp: Date.now() });
-      } catch {}
-      return new Response(JSON.stringify({ success: true, offline: true, opId }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+      return queueWrite(opId, method, url, parsedBody);
     }
     throw e;
   }
 
   if (method === "GET" && res.ok) {
-    const clone = res.clone();
     try {
-      const data = await clone.json();
+      const data = await res.clone().json();
       await cacheSet(url, data);
+      const merged = mergePendingCustomers(url, data);
+      // Offline khata add hua ho tabhi nayi Response banao, warna purani hi wapas
+      if (merged !== data) return json(merged, res.status);
     } catch {}
   }
 

@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, numeric, text, timestamp, pgEnum, boolean, integer } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, numeric, text, timestamp, pgEnum, boolean, integer, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const productTypeEnum = pgEnum("product_type", ["atta", "dalia"]);
 export const paymentModeEnum = pgEnum("payment_mode", ["cash", "credit"]);
@@ -31,9 +31,14 @@ export const customers = pgTable("customers", {
   userId: serial("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   name: varchar("name", { length: 200 }).notNull(),
   phone: varchar("phone", { length: 20 }).notNull(),
+  // Phone ka normalized roop (+91/0/spacing hata kar) — duplicate khata ROKNE ke liye
+  phoneNorm: varchar("phone_norm", { length: 20 }),
   address: text("address").default(""),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (t) => [
+  // DB-LEVEL GUARANTEE: ek user ka ek phone = EK hi khata (race/offline sab)
+  uniqueIndex("customers_user_phone_uk").on(t.userId, t.phoneNorm),
+]);
 
 export const transactions = pgTable("transactions", {
   id: serial("id").primaryKey(),

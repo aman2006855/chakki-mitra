@@ -5,6 +5,7 @@ import { Plus, Phone, MessageCircle, ChevronRight, Search, Edit2, Trash2 } from 
 import AddCustomer from "./AddCustomer";
 import CustomerDetail from "./CustomerDetail";
 import { api } from "@/lib/api";
+import { createOrReuseCustomer } from "@/lib/customer-create";
 
 interface CustomerWithDues {
   id: number;
@@ -241,10 +242,8 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSave={async (data) => {
-          await api("/api/customers", {
-            method: "POST",
-            body: JSON.stringify(data),
-          });
+          // Duplicate na bane: pehle check, phir server bhi dedupe karta hai
+          await createOrReuseCustomer(data, customerList);
           fetchCustomers();
           onRefresh();
         }}

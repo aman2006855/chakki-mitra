@@ -17,6 +17,11 @@ All notable changes to this project are documented here. Format follows Keep a C
 - Net wapas aane par queue sync ke saath lists bhi auto-refresh (`cm:sync-done`).
 - auth/guest + auth/session routes me CORS/OPTIONS add (APK cross-origin ke liye).
 - Typo: "शेष балан्स" (mixed Cyrillic) → "शेष बैलेंस" — customer detail summary me.
+- **Duplicate khata = ZERO (3 layer):** client pre-check (`createOrReuseCustomer`) → server POST dedupe (same phone = wahi row wapas) → DB `UNIQUE (user_id, phone_norm)` + purane duplicate auto-merge (kharche usi khate par shift karke, data loss nahi).
+- Phone normalization (`normalizePhone`): +91 / 0 / spacing sab ek maane — client aur SQL dono identical (4021 test cases me 0 mismatch).
+- **Offline khata ab poora kaam karta hai:** offline me banaya khata turant list me (temp `tmp_` id), entry usse judti hai, sync hone par temp id → asli id remap hoti hai — duplicate nahi, entry kabhi atakti nahi.
+- **Time-to-time sync:** queue flush har 15s + list refresh har 60s + app focus/visibility par turant sync + refresh.
+- Health endpoint me deploy marker (`rev`) — verify karne ke liye ki naya build live hai.
 - Subscription tab (BottomNav me 5th tab): current plan hero + validity progress, total kharch / plans / SMS stats, plan cards with Coming Soon ribbon, buy history, shimmer + stagger animations.
 - Settings me 🆘 Support section: Call/WhatsApp buttons (NEXT_PUBLIC_SUPPORT_PHONE se), in-app ticket form + mere tickets list with admin reply.
 - New API: GET/POST /api/support (10/hour spam guard) — tickets seedhe admin panel ke Support tab me dikhte hain.

@@ -105,6 +105,79 @@ export function removePendingSms(id: string): void {
   } catch {}
 }
 
+// ---- Pending (offline) customers ----
+// Offline me naya khata bane to turant phone par dikhna chahiye aur entry usse
+// judni chahiye. Temp id (tmp_...) milti hai; sync hone par asli id aa jati hai.
+const PC_KEY = "cm_pending_customers";
+
+export interface PendingCustomer {
+  tempId: string;
+  name: string;
+  phone: string;
+  address: string;
+  timestamp: number;
+  realId?: number | null;
+}
+
+export function getPendingCustomers(): PendingCustomer[] {
+  try {
+    const list = JSON.parse(localStorage.getItem(PC_KEY) || "[]");
+    if (!Array.isArray(list)) return [];
+    // Mapping zaroori rehti hai (entry ka temp id → asli id). Sirf bahut purani hatao.
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const fresh = list.filter((x: PendingCustomer) => x && x.tempId && (x.timestamp || 0) > cutoff);
+    if (fresh.length !== list.length) {
+      try {
+        localStorage.setItem(PC_KEY, JSON.stringify(fresh));
+      } catch {}
+    }
+    return fresh;
+  } catch {
+    return [];
+  }
+}
+
+function savePendingCustomers(list: PendingCustomer[]): void {
+  try {
+    localStorage.setItem(PC_KEY, JSON.stringify(list.slice(-200)));
+  } catch {}
+}
+
+export function addPendingCustomer(c: PendingCustomer): void {
+  try {
+    const list = getPendingCustomers();
+    if (list.some((x) => x.tempId === c.tempId)) return;
+    list.push({ ...c, realId: c.realId ?? null });
+    savePendingCustomers(list);
+  } catch {}
+}
+
+/** Sync ke baad: temp id → server ki asli id */
+export function markPendingCustomerSynced(tempId: string, realId: number): void {
+  try {
+    savePendingCustomers(getPendingCustomers().map((x) => (x.tempId === tempId ? { ...x, realId } : x)));
+  } catch {}
+}
+
+export function resolvePendingCustomer(tempId: string): number | null {
+  try {
+    const hit = getPendingCustomers().find((x) => x.tempId === tempId);
+    return hit?.realId || null;
+  } catch {
+    return null;
+  }
+}
+
+export function removePendingCustomer(tempId: string): void {
+  try {
+    savePendingCustomers(getPendingCustomers().filter((x) => x.tempId !== tempId));
+  } catch {}
+}
+
+export function isTempId(id: unknown): id is string {
+  return typeof id === "string" && id.startsWith("tmp_");
+}
+
 let onlineListeners: ((online: boolean) => void)[] = [];
 let _isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
 

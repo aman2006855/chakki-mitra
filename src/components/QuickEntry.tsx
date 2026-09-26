@@ -7,7 +7,8 @@ import CreditsExhaustedModal from "./CreditsExhaustedModal";
 import BackgroundSms from "@/plugins/background-sms";
 import { isNativePlatform } from "@/lib/capacitor";
 import { api } from "@/lib/api";
-import { addPendingSms } from "@/lib/offline-db";
+import { addPendingSms, getPendingCustomers, isTempId } from "@/lib/offline-db";
+import { createOrReuseCustomer } from "@/lib/customer-create";
 import { API_BASE } from "@/lib/config";
 
 interface SettingsData {
@@ -18,7 +19,7 @@ interface SettingsData {
 }
 
 interface CustomerData {
-  id: number;
+  id: number | string;
   name: string;
   phone: string;
   address: string;
@@ -50,7 +51,7 @@ export default function QuickEntry({
 }: QuickEntryProps) {
   const [product, setProduct] = useState<"atta" | "dalia">("atta");
   const [weight, setWeight] = useState<string>("");
-  const [customerId, setCustomerId] = useState<number | null>(null);
+  const [customerId, setCustomerId] = useState<number | string | null>(null);
   const [paymentMode, setPaymentMode] = useState<"cash" | "credit" | null>(null);
   const [notes, setNotes] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -154,7 +155,8 @@ export default function QuickEntry({
       const res = await api("/api/transactions", {
         method: "POST",
         body: JSON.stringify({
-          customerId: Number(customerId),
+          // Offline khata (tmp_...) = api() khud queue kar dega, sync par remap hoga
+          customerId: isTempId(customerId) ? customerId : Number(customerId),
           productType: product,
           weight: weightNum.toString(),
           rate: rate.toString(),
@@ -180,7 +182,12 @@ export default function QuickEntry({
         onSaved();
 
         if (isNativePlatform()) {
-          const customer = customers.find((c) => c.id === customerId);
+          // Offline khata abhi list me na ho to pending store se le lo
+          const customer =
+            customers.find((c) => c.id === customerId) ||
+            (isTempId(customerId)
+              ? getPendingCustomers().find((p) => p.tempId === customerId)
+              : undefined);
           if (customer?.phone) {
             const productLabel = product === "atta" ? "आटा" : "दलिया";
             const paymentLabel = paymentMode === "cash" ? "नगद" : "उधारी";
@@ -219,10 +226,12 @@ export default function QuickEntry({
 
                 // 2. Customer detail → receipt text (offline ho to cache; na mile to chhoti receipt)
                 let detail: any = null;
-                try {
-                  const detailRes = await api(`/api/customers/detail?id=${customerId}`);
-                  if (detailRes.ok) detail = await detailRes.json();
-                } catch {}
+                if (!isTempId(customerId)) {
+                  try {
+                    const detailRes = await api(`/api/customers/detail?id=${customerId}`);
+                    if (detailRes.ok) detail = await detailRes.json();
+                  } catch {}
+                }
                 const txns = detail?.transactions || [];
                 const summary = detail?.summary || {};
 
@@ -303,15 +312,20 @@ export default function QuickEntry({
   };
 
   const handleAddCustomer = async (c: { name: string; phone: string; address: string }) => {
-    const res = await api("/api/customers", {
-      method: "POST",
-      body: JSON.stringify(c),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setCustomerId(data.id);
-      onSaved();
+    const result = await createOrReuseCustomer(c, customers);
+    if (result.status === "error") {
+      showMessage({ type: "error", text: `❌ ${result.message}` }, 4000);
+      return;
     }
+    setCustomerId(result.id);
+    if (result.status === "reused") {
+      showMessage({ type: "success", text: "ℹ️ Pehle se maujood khata — wahi use hua, duplicate nahi bana" }, 4000);
+    } else if (result.status === "queued") {
+      showMessage({ type: "success", text: "✅ Khata ban gaya (offline) — net aane par sync hoga ⏳" }, 4000);
+    } else {
+      showMessage({ type: "success", text: "✅ नया खाता बन गया!" });
+    }
+    onSaved();
   };
 
   const handleWeightButton = (delta: number) => {
