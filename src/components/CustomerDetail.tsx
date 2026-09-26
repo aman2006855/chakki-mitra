@@ -38,7 +38,8 @@ interface Transaction {
   amount: string;
   paymentMode: string;
   notes: string;
-  created_at: string;
+  createdAt?: string;
+  created_at?: string;
 }
 
 interface Payment {
@@ -46,7 +47,8 @@ interface Payment {
   amount: string;
   type: string;
   description: string;
-  created_at: string;
+  createdAt?: string;
+  created_at?: string;
 }
 
 interface Summary {
@@ -182,20 +184,31 @@ export default function CustomerDetail({
     return shopName;
   };
 
-  const formatDate = (d: string) => {
-    try {
-      const fixed = d.includes("T") ? d : d.replace(" ", "T");
-      return new Date(fixed).toLocaleDateString("hi-IN", { day: "numeric", month: "short" });
-    } catch { return d; }
+  // API camelCase (createdAt) deta hai — purana cache snake_case bhi ho sakta hai
+  const txDate = (t: Transaction | Payment): string => {
+    return t.createdAt || (t as any).created_at || "";
   };
 
-  const formatDateTime = (d: string) => {
+  const formatDate = (d: string | null | undefined) => {
+    if (!d) return "—";
     try {
       const fixed = d.includes("T") ? d : d.replace(" ", "T");
-      return new Date(fixed).toLocaleDateString("hi-IN", {
+      const dt = new Date(fixed);
+      if (isNaN(dt.getTime())) return "—";
+      return dt.toLocaleDateString("hi-IN", { day: "numeric", month: "short" });
+    } catch { return "—"; }
+  };
+
+  const formatDateTime = (d: string | null | undefined) => {
+    if (!d) return "—";
+    try {
+      const fixed = d.includes("T") ? d : d.replace(" ", "T");
+      const dt = new Date(fixed);
+      if (isNaN(dt.getTime())) return "—";
+      return dt.toLocaleDateString("hi-IN", {
         day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
       });
-    } catch { return d; }
+    } catch { return "—"; }
   };
 
   const sendWhatsAppReminder = () => {
@@ -203,7 +216,7 @@ export default function CustomerDetail({
     const totalPaid = summary.totalBilled - summary.pendingDues + summary.totalAdvance;
     const txCount = transactions.length;
     const recentTx = transactions.slice(0, 3).map((t, i) =>
-      `${i + 1}. ${formatDate(t.created_at)} — ${getProductLabel(t.productType)} ${parseFloat(t.weight).toFixed(0)}kg = ${formatCurrency(parseFloat(t.amount))} (${t.paymentMode === "cash" ? "नगद" : "उधारी"})`
+      `${i + 1}. ${formatDate(txDate(t))} — ${getProductLabel(t.productType)} ${parseFloat(t.weight).toFixed(0)}kg = ${formatCurrency(parseFloat(t.amount))} (${t.paymentMode === "cash" ? "नगद" : "उधारी"})`
     ).join("\n");
 
     const msg = encodeURIComponent(
@@ -232,7 +245,7 @@ export default function CustomerDetail({
     const dateStr = now.toLocaleDateString("hi-IN", { day: "numeric", month: "long", year: "numeric" });
 
     let txLines = transactions.map((t, i) => {
-      const date = formatDate(t.created_at);
+      const date = formatDate(txDate(t));
       return `${i + 1}. ${date} — ${getProductLabel(t.productType)} ${parseFloat(t.weight).toFixed(0)}kg × ${formatCurrency(parseFloat(t.rate))} = *${formatCurrency(parseFloat(t.amount))}* (${t.paymentMode === "cash" ? "नगद" : "उधारी"})`;
     }).join("\n");
 
@@ -240,7 +253,7 @@ export default function CustomerDetail({
     if (payments.length > 0) {
       paymentLines = "\n✅ *जमा विवरण:*\n" +
         payments.map((p, i) => {
-          const date = formatDate(p.created_at);
+          const date = formatDate(txDate(p));
           return `${i + 1}. ${date} — ${formatCurrency(parseFloat(p.amount))} ${getPaymentLabel(p.type)}`;
         }).join("\n");
     }
@@ -434,7 +447,7 @@ export default function CustomerDetail({
                         </span>
                       </div>
                       <div className="text-xs text-gray-400 mt-0.5">
-                        {formatDateTime(t.created_at)}
+                        {formatDateTime(txDate(t))}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -486,7 +499,7 @@ export default function CustomerDetail({
                         {getPaymentLabel(p.type)}
                       </div>
                       <div className="text-xs text-gray-400 mt-0.5">
-                        {formatDateTime(p.created_at)}
+                        {formatDateTime(txDate(p))}
                       </div>
                     </div>
                     <div className="font-bold text-green-700 text-lg">
