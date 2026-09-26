@@ -64,8 +64,10 @@ export default function Header({ shopName, onSupportClick }: HeaderProps) {
             }`}>
               {online ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
               {online ? "Online" : "Offline"}
-              {!online && pendingCount > 0 && (
-                <span className="ml-0.5 bg-white/20 rounded-full px-1">{pendingCount}</span>
+              {pendingCount > 0 && (
+                <span className="ml-0.5 bg-white/20 rounded-full px-1" title="Sync pending">
+                  ⏳{pendingCount}
+                </span>
               )}
             </div>
             <button

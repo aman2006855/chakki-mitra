@@ -38,6 +38,10 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
 
   useEffect(() => {
     fetchCustomers();
+    // Offline queue sync hote hi list fresh (net wapas aane par)
+    const onSync = () => fetchCustomers();
+    window.addEventListener("cm:sync-done", onSync);
+    return () => window.removeEventListener("cm:sync-done", onSync);
   }, []);
 
   useEffect(() => {

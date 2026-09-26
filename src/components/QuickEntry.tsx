@@ -164,7 +164,12 @@ export default function QuickEntry({
         }),
       });
       if (res.ok) {
-        showMessage({ type: "success", text: "✅ एंट्री सेव हो गई!" });
+        const savedBody = await res.json().catch(() => ({} as any));
+        if ((savedBody as any)?.offline) {
+          showMessage({ type: "success", text: "✅ Save ho gaya (offline) — net aane par sync hoga ⏳" });
+        } else {
+          showMessage({ type: "success", text: "✅ एंट्री सेव हो गई!" });
+        }
         setWeight("");
         setPaymentMode(null);
         setNotes("");

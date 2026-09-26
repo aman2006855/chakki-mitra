@@ -1,5 +1,6 @@
 import { API_BASE } from "./config";
-import { getCached, setCache, addPendingOp, isOnline } from "./offline-db";
+import { addPendingOp, isOnline } from "./offline-db";
+import { cacheGet, cacheSet } from "./idb-cache";
 
 function getToken(): string | null {
   try {
@@ -23,12 +24,13 @@ export async function api(url: string, options?: RequestInit): Promise<Response>
   const fullUrl = url.startsWith("http") ? url : `${API_BASE}${url}`;
   const method = options?.method || "GET";
 
+  // OFFLINE GET: phone me save data turant dikhao (chahe kitna purana ho)
   if (method === "GET" && !isOnline()) {
-    const cached = getCached(url);
-    if (cached !== null) {
-      return new Response(JSON.stringify(cached), {
+    const hit = await cacheGet(url);
+    if (hit) {
+      return new Response(JSON.stringify(hit.data), {
         status: 200,
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Cache": "offline", "X-Cache-Age": String(hit.timestamp || 0) },
       });
     }
     return new Response(JSON.stringify({ error: "offline" }), {
@@ -52,17 +54,32 @@ export async function api(url: string, options?: RequestInit): Promise<Response>
     });
   }
 
-  const res = await fetch(fullUrl, {
-    ...options,
-    headers: buildHeaders(options?.headers as Record<string, string>),
-    credentials: "omit",
-  });
+  let res: Response;
+  try {
+    res = await fetch(fullUrl, {
+      ...options,
+      headers: buildHeaders(options?.headers as Record<string, string>),
+      credentials: "omit",
+    });
+  } catch (e) {
+    // Network fail (net gaya / server down): GET ho to phone ka save data do
+    if (method === "GET") {
+      const hit = await cacheGet(url);
+      if (hit) {
+        return new Response(JSON.stringify(hit.data), {
+          status: 200,
+          headers: { "Content-Type": "application/json", "X-Cache": "offline", "X-Cache-Age": String(hit.timestamp || 0) },
+        });
+      }
+    }
+    throw e;
+  }
 
   if (method === "GET" && res.ok) {
     const clone = res.clone();
     try {
       const data = await clone.json();
-      setCache(url, data);
+      await cacheSet(url, data);
     } catch {}
   }
 

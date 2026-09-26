@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { App as CapacitorApp } from "@capacitor/app";
 import Header from "@/components/Header";
+import OfflineBanner from "@/components/OfflineBanner";
 import BottomNav from "@/components/BottomNav";
 import PullToRefresh from "@/components/PullToRefresh";
 import AutoUpdater from "@/components/AutoUpdater";
@@ -110,6 +111,12 @@ export default function App() {
         const c = await api("/api/customers");
         if (c.ok) setCustomers(await c.json());
       } catch {}
+
+      // Background me baaki tabs ka data phone me save (offline ke liye)
+      try {
+        const { warmCache } = await import("@/lib/cache-warm");
+        warmCache();
+      } catch {}
     })();
   }, []);
 
@@ -155,6 +162,7 @@ export default function App() {
     <div className="flex flex-col max-w-lg mx-auto bg-gray-50 relative" style={{ height: '100dvh', overflow: 'hidden' }}>
       <AutoUpdater />
       <Header shopName={settings.shopName} onSupportClick={() => setSupportOpen(true)} />
+      <OfflineBanner />
       <PullToRefresh onRefresh={refreshData}>
         <main className="pb-20 flex-1 min-h-0">
           <div style={{ display: tab === "home" ? "block" : "none" }}>

@@ -33,16 +33,26 @@ export function useSyncPending() {
   const syncAll = async () => {
     if (syncingRef.current || !isOnline()) return;
     syncingRef.current = true;
+    let synced = 0;
     try {
       const ops = getPendingOps();
       for (const op of ops) {
         try {
           const ok = await syncPendingOp(op);
-          if (ok) removePendingOp(op.id);
+          if (ok) {
+            removePendingOp(op.id);
+            synced++;
+          }
         } catch {}
       }
     } finally {
       syncingRef.current = false;
+    }
+    // Lists turant fresh dikhe — KhataBook jaisi screens sunengi
+    if (synced > 0) {
+      try {
+        window.dispatchEvent(new CustomEvent("cm:sync-done", { detail: { count: synced } }));
+      } catch {}
     }
   };
 
