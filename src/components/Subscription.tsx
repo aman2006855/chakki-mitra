@@ -306,7 +306,13 @@ export default function Subscription() {
           </div>
 
           {/* Bottom note */}
-          <p className="sub-anim text-center text-[11px] text-gray-400 leading-relaxed px-4" style={{ animationDelay: "480ms" }}>
+          <div className="sub-anim bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3" style={{ animationDelay: "480ms" }}>
+            <p className="text-center text-[11px] text-amber-800 leading-relaxed">
+              📩 <b>SMS aapke SIM se jata hai</b> (mobile balance se kat-ta hai).<br />
+              Ye <b>subscription sirf service chalane ke liye</b> hai.
+            </p>
+          </div>
+          <p className="sub-anim text-center text-[11px] text-gray-400 leading-relaxed px-4" style={{ animationDelay: "520ms" }}>
             💳 Online payment jald aa raha hai.<br />Koi sawal ho to Settings me support se sampark karo.
           </p>
         </>

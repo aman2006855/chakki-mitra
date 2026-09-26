@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { Search, Plus, Minus, Save, UserPlus, Clock, ChevronRight } from "lucide-react";
 import AddCustomer from "./AddCustomer";
 import CreditsExhaustedModal from "./CreditsExhaustedModal";
-import SmsDisclaimer from "./SmsDisclaimer";
 import BackgroundSms from "@/plugins/background-sms";
 import { isNativePlatform } from "@/lib/capacitor";
 import { api } from "@/lib/api";
@@ -551,8 +550,6 @@ export default function QuickEntry({
           )}
         </button>
       </div>
-
-      {isNativePlatform() && <SmsDisclaimer />}
 
       <AddCustomer
         isOpen={showAddCustomer}

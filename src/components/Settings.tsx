@@ -12,7 +12,6 @@ import ApkUpdater from "@/plugins/apk-updater";
 import Support from "./Support";
 import type { PluginListenerHandle } from "@capacitor/core";
 import { isNativePlatform } from "@/lib/capacitor";
-import SmsDisclaimer from "./SmsDisclaimer";
 
 const GITHUB_REPO = "aman2006855/chakki-mitra";
 const GITHUB_API = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
@@ -557,7 +556,6 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
                 </div>
               </>
             )}
-            <SmsDisclaimer />
           </div>
         )}
       </div>

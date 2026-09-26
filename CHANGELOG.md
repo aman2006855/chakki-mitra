@@ -11,6 +11,7 @@ All notable changes to this project are documented here. Format follows Keep a C
 - No-duplicate guarantee: X-Idempotency-Key har write par + server dedupe (transactions/payments/customers) — sync retry par ek entry ek hi baar.
 - Pending SMS queue: offline/airplane entry ka SMS save + banner se ek-tap resend (📩 N SMS bhejo).
 - Bill/Reminder fix: date me "undefined" aata tha (created_at vs createdAt mismatch) — txDate helper + null-safe formatters.
+- Purana SMS disclaimer home + Settings se hataya; naya SIM/subscription note sirf Subscription tab me.
 - Subscription tab (BottomNav me 5th tab): current plan hero + validity progress, total kharch / plans / SMS stats, plan cards with Coming Soon ribbon, buy history, shimmer + stagger animations.
 - Settings me 🆘 Support section: Call/WhatsApp buttons (NEXT_PUBLIC_SUPPORT_PHONE se), in-app ticket form + mere tickets list with admin reply.
 - New API: GET/POST /api/support (10/hour spam guard) — tickets seedhe admin panel ke Support tab me dikhte hain.
