@@ -1,5 +1,5 @@
 import { API_BASE } from "./config";
-import { addPendingOp, isOnline, reportNetworkResult } from "./offline-db";
+import { addPendingOp, isOnline, reportNetworkResult, requestNetworkProbe } from "./offline-db";
 import { cacheGet, cacheSet } from "./idb-cache";
 
 function getToken(): string | null {
@@ -31,6 +31,9 @@ export async function api(url: string, options?: RequestInit): Promise<Response>
 
   // OFFLINE GET: phone me save data turant dikhao (chahe kitna purana ho)
   if (method === "GET" && !isOnline()) {
+    // State galat bhi ho sakti hai (net chalu par "offline" chipka ho) —
+    // probe chalao taki jaldi wapas online aaye aur fresh data aaye
+    requestNetworkProbe();
     const hit = await cacheGet(url);
     if (hit) {
       return new Response(JSON.stringify(hit.data), {
@@ -45,6 +48,7 @@ export async function api(url: string, options?: RequestInit): Promise<Response>
   }
 
   if (method !== "GET" && !isOnline()) {
+    requestNetworkProbe();
     let parsedBody: any = null;
     try {
       parsedBody = options?.body ? JSON.parse(options.body as string) : null;

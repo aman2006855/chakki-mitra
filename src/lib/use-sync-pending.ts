@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { API_BASE } from "./config";
-import { getPendingOps, removePendingOp, isOnline, onOnlineChange } from "./offline-db";
+import { getPendingOps, removePendingOp, isOnline, onOnlineChange, probeNetwork, reportNetworkResult } from "./offline-db";
 
 function getToken(): string | null {
   try {
@@ -20,26 +20,51 @@ async function syncPendingOp(op: { id: string; method: string; url: string; body
   if (op.id) headers["X-Idempotency-Key"] = op.id;
 
   const fullUrl = op.url.startsWith("http") ? op.url : `${API_BASE}${op.url}`;
-  const res = await fetch(fullUrl, {
-    method: op.method,
-    headers,
-    body: op.body ? JSON.stringify(op.body) : undefined,
-    credentials: "omit",
-  });
-  // Server idempotency se dedupe karta hai — dobara bhejna safe hai
-  return res.ok;
+  try {
+    const res = await fetch(fullUrl, {
+      method: op.method,
+      headers,
+      body: op.body ? JSON.stringify(op.body) : undefined,
+      credentials: "omit",
+    });
+    // Response aaya = net sach me chal raha hai (state wapas online)
+    reportNetworkResult(true);
+    // Server idempotency se dedupe karta hai — dobara bhejna safe hai
+    return res.ok;
+  } catch {
+    // Fetch fail = sach me net gaya — heartbeat dobara probe karega
+    reportNetworkResult(false);
+    return false;
+  }
+}
+
+// Lists ko batao: net wapas aaya / queue sync hui — ab fresh data lo
+function dispatchRefresh(count: number): void {
+  try {
+    window.dispatchEvent(new CustomEvent("cm:sync-done", { detail: { count } }));
+  } catch {}
 }
 
 export function useSyncPending() {
   const syncingRef = useRef(false);
 
-  const syncAll = async () => {
-    if (syncingRef.current || !isOnline()) return;
+  const syncAll = async (opts?: { refresh?: boolean }) => {
+    if (syncingRef.current) return;
+    // State "offline" lag rahi hai par ops pending hain — pehle probe karo,
+    // net chalu ho to state sudhar kar sync chalu (deadlock fix)
+    if (!isOnline()) {
+      const recovered = await probeNetwork(true);
+      if (!recovered) return;
+    }
+    const queued = getPendingOps();
+    if (queued.length === 0) {
+      if (opts?.refresh) dispatchRefresh(0);
+      return;
+    }
     syncingRef.current = true;
     let synced = 0;
     try {
-      const ops = getPendingOps();
-      for (const op of ops) {
+      for (const op of queued) {
         try {
           const ok = await syncPendingOp(op);
           if (ok) {
@@ -52,18 +77,22 @@ export function useSyncPending() {
       syncingRef.current = false;
     }
     // Lists turant fresh dikhe — KhataBook jaisi screens sunengi
-    if (synced > 0) {
-      try {
-        window.dispatchEvent(new CustomEvent("cm:sync-done", { detail: { count: synced } }));
-      } catch {}
-    }
+    if (synced > 0 || opts?.refresh) dispatchRefresh(synced);
   };
 
   useEffect(() => {
-    if (isOnline()) syncAll();
+    syncAll();
     const unsub = onOnlineChange((online) => {
-      if (online) syncAll();
+      // Net wapas aaya — queue bhejo AUR cached lists bhi fresh kar do
+      if (online) syncAll({ refresh: true });
     });
-    return unsub;
+    // Safety net: state galat ho ya koi op chhoot gaya ho — 15s me dobara try
+    const t = setInterval(() => {
+      if (getPendingOps().length > 0) syncAll();
+    }, 15000);
+    return () => {
+      unsub();
+      clearInterval(t);
+    };
   }, []);
 }

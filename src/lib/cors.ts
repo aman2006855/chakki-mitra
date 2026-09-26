@@ -4,7 +4,13 @@ export function corsHeaders(): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    // X-Idempotency-Key ALLOW-List me hona ZAROORI hai — warna APK (cross-origin)
+    // preflight reject ho jata har write par → "offline" stuck + sync band.
+    "Access-Control-Allow-Headers":
+      "Content-Type, Authorization, Accept, X-Requested-With, X-Idempotency-Key",
+    "Access-Control-Expose-Headers": "X-Cache, X-Cache-Age",
+    // Chhota TTL — fix deploy hote hi purana (galat) preflight cache turant expire ho
+    "Access-Control-Max-Age": "600",
   };
 }
 

@@ -12,6 +12,10 @@ All notable changes to this project are documented here. Format follows Keep a C
 - Pending SMS queue: offline/airplane entry ka SMS save + banner se ek-tap resend (📩 N SMS bhejo).
 - Bill/Reminder fix: date me "undefined" aata tha (created_at vs createdAt mismatch) — txDate helper + null-safe formatters.
 - Purana SMS disclaimer home + Settings se hataya; naya SIM/subscription note sirf Subscription tab me.
+- **Offline stuck fix (root cause):** `X-Idempotency-Key` CORS allow-list me nahi tha → APK har write me preflight fail → "offline" hamesha + sync band. Ab allow-list me hai + preflight 10 min cache.
+- **Offline deadlock fix:** ek fail ke baad state kabhi recover nahi hoti thi — ab heartbeat `/api/health` probe (offline: 6s, online: 60s, app focus par turant) + sync retry timer (15s).
+- Net wapas aane par queue sync ke saath lists bhi auto-refresh (`cm:sync-done`).
+- auth/guest + auth/session routes me CORS/OPTIONS add (APK cross-origin ke liye).
 - Subscription tab (BottomNav me 5th tab): current plan hero + validity progress, total kharch / plans / SMS stats, plan cards with Coming Soon ribbon, buy history, shimmer + stagger animations.
 - Settings me 🆘 Support section: Call/WhatsApp buttons (NEXT_PUBLIC_SUPPORT_PHONE se), in-app ticket form + mere tickets list with admin reply.
 - New API: GET/POST /api/support (10/hour spam guard) — tickets seedhe admin panel ke Support tab me dikhte hain.
