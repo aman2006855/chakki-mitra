@@ -41,13 +41,15 @@ export async function api(url: string, options?: RequestInit): Promise<Response>
 
   if (method !== "GET" && !isOnline()) {
     const opId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    addPendingOp({
-      id: opId,
-      method,
-      url,
-      body: options?.body ? JSON.parse(options.body as string) : null,
-      timestamp: Date.now(),
-    });
+    let parsedBody: any = null;
+    try {
+      parsedBody = options?.body ? JSON.parse(options.body as string) : null;
+    } catch {
+      parsedBody = null;
+    }
+    try {
+      addPendingOp({ id: opId, method, url, body: parsedBody, timestamp: Date.now() });
+    } catch {}
     return new Response(JSON.stringify({ success: true, offline: true, opId }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -62,7 +64,8 @@ export async function api(url: string, options?: RequestInit): Promise<Response>
       credentials: "omit",
     });
   } catch (e) {
-    // Network fail (net gaya / server down): GET ho to phone ka save data do
+    // Network fail (net gaya / server down / navigator.onLine ne jhooth bola):
+    // GET ho to phone ka save data do, WRITE ho to queue me daalo (fake success)
     if (method === "GET") {
       const hit = await cacheGet(url);
       if (hit) {
@@ -71,6 +74,21 @@ export async function api(url: string, options?: RequestInit): Promise<Response>
           headers: { "Content-Type": "application/json", "X-Cache": "offline", "X-Cache-Age": String(hit.timestamp || 0) },
         });
       }
+    } else {
+      const opId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      let parsedBody: any = null;
+      try {
+        parsedBody = options?.body ? JSON.parse(options.body as string) : null;
+      } catch {
+        parsedBody = null;
+      }
+      try {
+        addPendingOp({ id: opId, method, url, body: parsedBody, timestamp: Date.now() });
+      } catch {}
+      return new Response(JSON.stringify({ success: true, offline: true, opId }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
     }
     throw e;
   }

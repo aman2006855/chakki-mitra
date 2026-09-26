@@ -6,6 +6,7 @@ All notable changes to this project are documented here. Format follows Keep a C
 
 ### Added
 - Offline-first v2 (WhatsApp-jaisa, bina permission): IndexedDB cache (50MB+, 7-din TTL, stale-while-revalidate), app-start cache warming, sync-done auto-refresh, offline-aware entry toast, pending badge hamesha, 📴 offline banner.
+- Write-path hardened: fetch-fail par entry queue (navigator.onLine unreliable), safe body parse — offline/weak-net par "network error" nahi, ⏳ sync pending.
 - Subscription tab (BottomNav me 5th tab): current plan hero + validity progress, total kharch / plans / SMS stats, plan cards with Coming Soon ribbon, buy history, shimmer + stagger animations.
 - Settings me 🆘 Support section: Call/WhatsApp buttons (NEXT_PUBLIC_SUPPORT_PHONE se), in-app ticket form + mere tickets list with admin reply.
 - New API: GET/POST /api/support (10/hour spam guard) — tickets seedhe admin panel ke Support tab me dikhte hain.
