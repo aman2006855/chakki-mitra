@@ -368,7 +368,7 @@ export default function CustomerDetail({
           </div>
           <div className="mt-3 pt-3 border-t border-gray-100">
             <div className="flex justify-between items-center">
-              <span className="text-sm font-semibold text-gray-700">शेष बалан्स</span>
+              <span className="text-sm font-semibold text-gray-700">शेष बैलेंस</span>
               <span className={`text-lg font-bold ${summary.netBalance > 0 ? "text-red-600" : summary.netBalance < 0 ? "text-green-600" : "text-gray-600"}`}>
                 {formatCurrency(summary.netBalance)}
               </span>

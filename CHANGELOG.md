@@ -16,6 +16,7 @@ All notable changes to this project are documented here. Format follows Keep a C
 - **Offline deadlock fix:** ek fail ke baad state kabhi recover nahi hoti thi — ab heartbeat `/api/health` probe (offline: 6s, online: 60s, app focus par turant) + sync retry timer (15s).
 - Net wapas aane par queue sync ke saath lists bhi auto-refresh (`cm:sync-done`).
 - auth/guest + auth/session routes me CORS/OPTIONS add (APK cross-origin ke liye).
+- Typo: "शेष балан्स" (mixed Cyrillic) → "शेष बैलेंस" — customer detail summary me.
 - Subscription tab (BottomNav me 5th tab): current plan hero + validity progress, total kharch / plans / SMS stats, plan cards with Coming Soon ribbon, buy history, shimmer + stagger animations.
 - Settings me 🆘 Support section: Call/WhatsApp buttons (NEXT_PUBLIC_SUPPORT_PHONE se), in-app ticket form + mere tickets list with admin reply.
 - New API: GET/POST /api/support (10/hour spam guard) — tickets seedhe admin panel ke Support tab me dikhte hain.
