@@ -12,6 +12,7 @@ import ApkUpdater from "@/plugins/apk-updater";
 import Support from "./Support";
 import type { PluginListenerHandle } from "@capacitor/core";
 import { isNativePlatform } from "@/lib/capacitor";
+import { getPendingOpsSummary, forceRetryAllPendingOps } from "@/lib/offline-db";
 
 const GITHUB_REPO = "aman2006855/chakki-mitra";
 const GITHUB_API = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
@@ -53,6 +54,37 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
   const [message, setMessage] = useState<string>("");
   const [appVersion, setAppVersion] = useState("1.0.0");
   const [latestVersion, setLatestVersion] = useState("");
+  // Sync diagnostics — atki queue ka sach Settings me hi dikhe (support ke liye)
+  const [syncDiag, setSyncDiag] = useState<{
+    total: number;
+    stuck: number;
+    rejected: number;
+    orphan: number;
+    lastError: string | null;
+  }>({ total: 0, stuck: 0, rejected: 0, orphan: 0, lastError: null });
+
+  useEffect(() => {
+    const refreshSync = () => {
+      try {
+        setSyncDiag(getPendingOpsSummary());
+      } catch {}
+    };
+    refreshSync();
+    const t = setInterval(refreshSync, 3000);
+    window.addEventListener("cm:sync-done", refreshSync);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("cm:sync-done", refreshSync);
+    };
+  }, []);
+
+  function retrySyncNow() {
+    try {
+      forceRetryAllPendingOps();
+      window.dispatchEvent(new CustomEvent("cm:queue-write"));
+      setSyncDiag((s) => ({ ...s, stuck: 0, lastError: null }));
+    } catch {}
+  }
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState("");
   const [downloadSize, setDownloadSize] = useState("");
@@ -658,6 +690,27 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
               <span className="text-green-600 text-xs font-medium">✅ अपडेटेड</span>
             )}
           </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-600">सिंक</span>
+            {syncDiag.total === 0 ? (
+              <span className="text-green-600 text-xs font-medium">✅ सब sync</span>
+            ) : syncDiag.stuck > 0 ? (
+              <button
+                type="button"
+                onClick={retrySyncNow}
+                className="text-amber-700 font-semibold text-xs active:text-amber-900"
+              >
+                ⚠️{syncDiag.stuck} ruki — Retry
+              </button>
+            ) : (
+              <span className="text-orange-600 text-xs font-medium">⏳{syncDiag.total} sync ho raha...</span>
+            )}
+          </div>
+          {syncDiag.stuck > 0 && syncDiag.lastError ? (
+            <div className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1">
+              ⚠️ {syncDiag.lastError}
+            </div>
+          ) : null}
         </div>
       </div>
 

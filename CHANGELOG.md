@@ -56,6 +56,10 @@ All notable changes to this project are documented here. Format follows Keep a C
   - **Banner ab sach dikhata hai:** green `✅ Net wapas! ⏳N sync ho raha hai` (asli me chal raha) vs amber `⚠️ N entry ruki — {server ka error}` + **🔄 Retry** button (backoff/permanent hata kar foran bhejta hai).
   - Storage full par entry ab fake success nahi deti: pehle cache eviction try, warna `❌ सेव नहीं हो पाई` (507) — chup-chaap entry gayab hone se bachav.
 
+- **Stuck ⏳ ka asli poison mila (400 forever):** offline khata edit karne par `PUT /api/customers` me `id: "tmp_x"` jata tha → server `Number("tmp_x")` = NaN → **400 har retry me** → badge kabhi 0 nahi (aapke screenshots wala ⏳1 yahi ho sakta hai). Ab 3 layer guard: (1) offline khate par Edit button hi nahi dikhta — `⏳ sync baaki` pill, (2) `api()` temp-id wala PUT queue hi nahi karta (turant error), (3) v1.0.60 ka amber banner + Retry aise ops dikhata hai.
+- Offline khata delete ab phone se hi saaf hota hai (pending record + queued ops) — ghost khata ya orphan entry nahi banti.
+- **Settings → ऐप जानकारी me Sync status:** `✅ सब sync` / `⏳N sync ho raha` / `⚠️N ruki — Retry` + server ka error text — ab ek screenshot me poori diagnosis (version + wajah) milegi.
+
 ## [1.0.24] - 2026-09-21
 
 ### Added

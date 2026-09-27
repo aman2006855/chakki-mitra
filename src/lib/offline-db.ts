@@ -94,6 +94,18 @@ export function clearPendingOps(): void {
   } catch {}
 }
 
+// Offline khata delete hua → uska create op + us khate par likhi entries bhi
+// queue se hatao. Nahi to entry orphan bankar badge me atak jati, ya heal
+// use dobara bana deta (deleted khata wapas aa jata).
+export function dropTempCustomerOps(tempId: string): void {
+  try {
+    const ops = getPendingOps().filter(
+      (op) => op.body?.tempId !== tempId && op.body?.customerId !== tempId
+    );
+    localStorage.setItem(PENDING_KEY, JSON.stringify(ops));
+  } catch {}
+}
+
 export function updatePendingOp(id: string, patch: Partial<PendingOp>): void {
   try {
     const ops = getPendingOps().map((op) => (op.id === id ? { ...op, ...patch } : op));

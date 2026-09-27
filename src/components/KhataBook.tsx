@@ -6,6 +6,7 @@ import AddCustomer from "./AddCustomer";
 import CustomerDetail from "./CustomerDetail";
 import { api } from "@/lib/api";
 import { createOrReuseCustomer } from "@/lib/customer-create";
+import { isTempId, removePendingCustomer, dropTempCustomerOps } from "@/lib/offline-db";
 
 interface CustomerWithDues {
   id: number;
@@ -15,6 +16,7 @@ interface CustomerWithDues {
   dues: number;
   advance: number;
   totalCredit: number;
+  pendingSync?: boolean;
 }
 
 interface KhataBookProps {
@@ -81,6 +83,12 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
 
   const handleSaveEdit = async () => {
     if (!editingCustomer || !editName.trim() || !editPhone.trim()) return;
+    // Offline khata (tmp id) server par hai hi nahi — PUT hamesha 400 dega.
+    // Edit button waise bhi chhupa rehta hai; ye sirf safety net hai.
+    if (isTempId(editingCustomer.id)) {
+      setEditingCustomer(null);
+      return;
+    }
     try {
       await api("/api/customers", {
         method: "PUT",
@@ -101,6 +109,17 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
 
   const handleDelete = async () => {
     if (!deletingCustomer) return;
+    // Offline khata server par bana hi nahi — API call ka koi matlab nahi.
+    // Phone se hi record + uski queued entries hatao (warna orphan badge atak jata).
+    if (isTempId(deletingCustomer.id)) {
+      const tempId = String(deletingCustomer.id);
+      removePendingCustomer(tempId);
+      dropTempCustomerOps(tempId);
+      setDeletingCustomer(null);
+      fetchCustomers();
+      onRefresh();
+      return;
+    }
     try {
       await api(`/api/customers?id=${deletingCustomer.id}`, { method: "DELETE" });
       setDeletingCustomer(null);
@@ -184,6 +203,11 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
                   </div>
                   <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
                     <span>{c.phone}</span>
+                    {(c.pendingSync || isTempId(c.id)) && (
+                      <span className="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-medium">
+                        ⏳ sync baaki
+                      </span>
+                    )}
                     {c.advance > 0 && (
                       <span className="text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
                         एडवांस ₹{c.advance.toFixed(0)}
@@ -210,13 +234,16 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
                   <MessageCircle className="w-3.5 h-3.5" />
                   WhatsApp
                 </a>
-                <button
-                  type="button"
-                  onClick={() => handleEdit(c)}
-                  className="flex items-center justify-center gap-1 py-2 px-2.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium active:bg-blue-100"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                </button>
+                {/* Offline khata abhi server par nahi — edit sync ke baad (PUT hamesha 400 dega) */}
+                {!(c.pendingSync || isTempId(c.id)) && (
+                  <button
+                    type="button"
+                    onClick={() => handleEdit(c)}
+                    className="flex items-center justify-center gap-1 py-2 px-2.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium active:bg-blue-100"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setDeletingCustomer(c)}

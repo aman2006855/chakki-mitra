@@ -120,6 +120,14 @@ export async function api(url: string, options?: RequestInit): Promise<Response>
   // server duplicate entry kabhi nahi banayega (retry/sync safe)
   const opId = method !== "GET" ? `${Date.now()}_${Math.random().toString(36).slice(2, 8)}` : "";
 
+  // Temp id (offline khata) ka PUT server par kabhi nahi chalega —
+  // Number("tmp_x") = NaN → hamesha 400. Queue me daala to badge HAMESHA
+  // ⏳ atka rehta tha (yehi stuck-1 ka ek root cause tha). Turant sach error
+  // do — khata sync hone ke baad edit hoga.
+  if (method === "PUT" && parsedBody && isTempId(parsedBody.id)) {
+    return json({ error: "⏳ Offline khata — sync hone ke baad edit karo" }, 400);
+  }
+
   // OFFLINE GET: phone me save data turant dikhao (chahe kitna purana ho)
   if (method === "GET" && !isOnline()) {
     // State galat bhi ho sakti hai (net chalu par "offline" chipka ho) —
