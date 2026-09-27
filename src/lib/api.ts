@@ -46,9 +46,15 @@ function json(data: any, status = 200, headers: Record<string, string> = {}): Re
   });
 }
 
+const API_TIMEOUT_MS = 20000; // UI 5-6 min latka nahi rahega — max 20s me decision
+
 function queueWrite(opId: string, method: string, url: string, body: any): Response {
   try {
     addPendingOp({ id: opId, method, url, body, timestamp: Date.now() });
+  } catch {}
+  // Sync ko turant batao (wo 1.2s baad drain chalayega — pehle 15s intezaar tha)
+  try {
+    window.dispatchEvent(new CustomEvent("cm:queue-write"));
   } catch {}
   return json({ success: true, offline: true, opId });
 }
@@ -124,6 +130,9 @@ export async function api(url: string, options?: RequestInit): Promise<Response>
   }
 
   let res: Response;
+  // Har request ko time limit — pehle koi bhi hang 300s (5 min) tak ruk sakta tha
+  const ctrl = new AbortController();
+  const timeout = setTimeout(() => ctrl.abort(), API_TIMEOUT_MS);
   try {
     res = await fetch(fullUrl, {
       ...options,
@@ -132,14 +141,14 @@ export async function api(url: string, options?: RequestInit): Promise<Response>
         ...(opId ? { "X-Idempotency-Key": opId } : {}),
       }),
       credentials: "omit",
+      signal: options?.signal ?? ctrl.signal,
     });
     // Response aaya (chaho status kuch bhi ho) = net sach me chal raha hai
     reportNetworkResult(true);
   } catch (e) {
-    // Fetch fail = sach me offline (navigator.onLine jhooth bhi bole to bhi)
+    // Fetch fail/timeout = sach me offline ya server dheeta (navigator.onLine
+    // jhooth bole to bhi) — GET ho to save data, WRITE ho to queue (idempotency safe)
     reportNetworkResult(false);
-    // Network fail (net gaya / server down / navigator.onLine ne jhooth bola):
-    // GET ho to phone ka save data do, WRITE ho to queue me daalo (fake success)
     if (method === "GET") {
       const hit = await cacheGet(url);
       if (hit) {
@@ -152,6 +161,8 @@ export async function api(url: string, options?: RequestInit): Promise<Response>
       return queueWrite(opId, method, url, parsedBody);
     }
     throw e;
+  } finally {
+    clearTimeout(timeout);
   }
 
   if (method === "GET" && res.ok) {

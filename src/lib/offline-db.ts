@@ -15,6 +15,10 @@ export interface PendingOp {
   url: string;
   body: any;
   timestamp: number;
+  /** Server reject kar raha hai to attempts badhao (backoff ke liye) */
+  attempts?: number;
+  /** Is waqt tak is op ko dobara mat bhejo (poison op baaki queue ko na roke) */
+  nextAttemptAt?: number;
 }
 
 function getCacheKey(url: string): string {
@@ -65,6 +69,23 @@ export function removePendingOp(id: string): void {
 export function clearPendingOps(): void {
   try {
     localStorage.setItem(PENDING_KEY, "[]");
+  } catch {}
+}
+
+export function updatePendingOp(id: string, patch: Partial<PendingOp>): void {
+  try {
+    const ops = getPendingOps().map((op) => (op.id === id ? { ...op, ...patch } : op));
+    localStorage.setItem(PENDING_KEY, JSON.stringify(ops));
+  } catch {}
+}
+
+// Net wapas aate hi saara backoff hata do — nahi to queue wapas turant drain na ho
+export function resetPendingOpBackoff(): void {
+  try {
+    const ops = getPendingOps().map((op) =>
+      op.attempts || op.nextAttemptAt ? { ...op, attempts: 0, nextAttemptAt: 0 } : op
+    );
+    localStorage.setItem(PENDING_KEY, JSON.stringify(ops));
   } catch {}
 }
 

@@ -183,7 +183,14 @@ export function isGuestEmail(email: string | null | undefined): boolean {
 }
 
 // Suspended shop ka session/API block — JWT valid ho tab bhi
+// Cache (60s): ye call har WRITE par chalti thi = har entry par ek extra DB
+// roundtrip (sync 5-6 min hone ka bada karan). Suspension 1 min me lagta hai.
+const activeUserCache = new Map<number, { active: boolean; at: number }>();
+const ACTIVE_CACHE_MS = 60000;
+
 export async function isUserActive(userId: number): Promise<boolean> {
+  const hit = activeUserCache.get(userId);
+  if (hit && Date.now() - hit.at < ACTIVE_CACHE_MS) return hit.active;
   try {
     const [row] = await db
       .select({ status: users.status })
@@ -191,9 +198,12 @@ export async function isUserActive(userId: number): Promise<boolean> {
       .where(eq(users.id, userId))
       .limit(1);
     if (!row) return false;
-    return (row.status || "active") !== "suspended";
+    const active = (row.status || "active") !== "suspended";
+    activeUserCache.set(userId, { active, at: Date.now() });
+    return active;
   } catch {
-    // DB fail → fail-open (availability), suspension check next call par
+    // DB fail → fail-open (availability), cache bhi mat bharo —
+    // agli call dobara try karegi
     return true;
   }
 }

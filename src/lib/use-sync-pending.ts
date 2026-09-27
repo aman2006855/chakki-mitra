@@ -5,6 +5,8 @@ import { API_BASE } from "./config";
 import {
   getPendingOps,
   removePendingOp,
+  updatePendingOp,
+  resetPendingOpBackoff,
   isOnline,
   onOnlineChange,
   probeNetwork,
@@ -12,10 +14,15 @@ import {
   getPendingCustomers,
   markPendingCustomerSynced,
   isTempId,
+  type PendingOp,
 } from "./offline-db";
 
-const FLUSH_MS = 15000; // queue bhejo — har 15s
+const FLUSH_MS = 15000; // queue bhejo — har 15s (backup; naye op ka event pehle chalata hai)
 const REFRESH_MS = 60000; // server se list fresh lo — har 60s (time-to-time sync)
+const OP_TIMEOUT_MS = 10000; // ek op KABHI latka nahi — pehle browser default ~300s tha
+const CONCURRENCY = 6; // ek saath 6 op → queue 6x jaldi drain
+const BACKOFF_BASE_MS = 15000; // server reject kare to dheere-dheere retry
+const BACKOFF_MAX_MS = 120000;
 
 function getToken(): string | null {
   try {
@@ -47,7 +54,11 @@ function prepareBody(body: any): { ready: boolean; body: any } {
   return { ready: true, body };
 }
 
-async function syncPendingOp(op: { id: string; method: string; url: string; body: any }): Promise<{ ok: boolean; data: any }> {
+async function syncPendingOp(op: { id: string; method: string; url: string; body: any }): Promise<{
+  ok: boolean;
+  data: any;
+  status: number;
+}> {
   const token = getToken();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -55,23 +66,37 @@ async function syncPendingOp(op: { id: string; method: string; url: string; body
   if (op.id) headers["X-Idempotency-Key"] = op.id;
 
   const fullUrl = op.url.startsWith("http") ? op.url : `${API_BASE}${op.url}`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), OP_TIMEOUT_MS);
   try {
     const res = await fetch(fullUrl, {
       method: op.method,
       headers,
       body: op.body ? JSON.stringify(op.body) : undefined,
       credentials: "omit",
+      signal: ctrl.signal,
     });
     const data = await res.json().catch(() => ({} as any));
     // Response aaya = net sach me chal raha hai (state wapas online)
     reportNetworkResult(true);
     // Server idempotency se dedupe karta hai — dobara bhejna safe hai
-    return { ok: res.ok, data };
+    return { ok: res.ok, data, status: res.status };
   } catch {
-    // Fetch fail = sach me net gaya — heartbeat dobara probe karega
+    // Fetch fail/timeout = net ya server nahi chal ra — heartbeat dobara probe karega
     reportNetworkResult(false);
-    return { ok: false, data: null };
+    return { ok: false, data: null, status: 0 };
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+// Backoff sirf tab jab SERVER ne reject kiya (4xx/5xx). Network fail (status 0)
+// par nahi — waise bhi poori queue offline ho to syncAll probe se pehle hi ruk jata hai.
+function markFailed(op: PendingOp, status: number): void {
+  if (status === 0) return;
+  const attempts = (op.attempts || 0) + 1;
+  const delay = Math.min(BACKOFF_BASE_MS * Math.pow(2, attempts - 1), BACKOFF_MAX_MS);
+  updatePendingOp(op.id, { attempts, nextAttemptAt: Date.now() + delay });
 }
 
 export function useSyncPending() {
@@ -90,25 +115,48 @@ export function useSyncPending() {
       if (opts?.refresh) dispatchRefresh(0);
       return;
     }
+    // Backoff me jo op abhi server reject ho rahe hain unhe agli round chhod do —
+    // ek kharaab op baaki queue ko har round me rukne nahi dega
+    const eligible = queued.filter((op) => !op.nextAttemptAt || Date.now() >= op.nextAttemptAt);
+    // Order: khata (customer create) PEHLE, phir entries — taki temp id remap
+    // usi round me ho jaye, entry ko agle round ka intzaar na karna pade
+    const creates = eligible.filter((op) => isCustomerCreateOp(op));
+    const rest = eligible.filter((op) => !isCustomerCreateOp(op));
+
     syncingRef.current = true;
     let synced = 0;
-    try {
-      for (const op of queued) {
-        // Order matter karta hai: khata pehle, entry baad me (remap ke liye)
-        const prep = prepareBody(op.body);
-        if (!prep.ready) continue; // khata abhi bachi — agle round me bhejenge
-        try {
-          const result = await syncPendingOp({ ...op, body: prep.body });
-          if (result.ok) {
-            removePendingOp(op.id);
-            synced++;
-            // Naya khata sync hua → temp id ko asli id de do (agli entries sahi jayengi)
-            if (isCustomerCreateOp(op) && op.body?.tempId && result.data?.id) {
-              markPendingCustomerSynced(String(op.body.tempId), Number(result.data.id));
-            }
-          }
-        } catch {}
+
+    // Ek saath CONCURRENCY op — chunk ke baad hi agla chunk (order preserve),
+    // isliye dependency wali entry kabhi create se pehle nahi ja sakti
+    const drain = async (ops: PendingOp[]): Promise<void> => {
+      for (let i = 0; i < ops.length; i += CONCURRENCY) {
+        const chunk = ops.slice(i, i + CONCURRENCY);
+        await Promise.all(
+          chunk.map(async (op) => {
+            // Order matter karta hai: khata pehle, entry baad me (remap ke liye)
+            const prep = prepareBody(op.body);
+            if (!prep.ready) return; // khata abhi bachi — agle round me bhejenge
+            try {
+              const result = await syncPendingOp({ ...op, body: prep.body });
+              if (result.ok) {
+                removePendingOp(op.id);
+                synced++;
+                // Naya khata sync hua → temp id ko asli id de do (agli entries sahi jayengi)
+                if (isCustomerCreateOp(op) && op.body?.tempId && result.data?.id) {
+                  markPendingCustomerSynced(String(op.body.tempId), Number(result.data.id));
+                }
+              } else {
+                markFailed(op, result.status);
+              }
+            } catch {}
+          })
+        );
       }
+    };
+
+    try {
+      await drain(creates);
+      await drain(rest);
     } finally {
       syncingRef.current = false;
     }
@@ -120,9 +168,24 @@ export function useSyncPending() {
     syncAll();
 
     const unsub = onOnlineChange((online) => {
-      // Net wapas aaya — queue bhejo AUR cached lists bhi fresh kar do
-      if (online) syncAll({ refresh: true });
+      // Net wapas aaya — saara backoff hatao, queue bhejo, lists fresh karo
+      if (online) {
+        resetPendingOpBackoff();
+        syncAll({ refresh: true });
+      }
     });
+
+    // Naya op queue hua → ~1.2s me turant sync (pehle 15s intezaar tha;
+    // delay se burst — kai entry ek saath — ek hi round me chali jaati hai)
+    let writeTimer: ReturnType<typeof setTimeout> | null = null;
+    const onQueueWrite = () => {
+      if (writeTimer) clearTimeout(writeTimer);
+      writeTimer = setTimeout(() => {
+        writeTimer = null;
+        syncAll();
+      }, 1200);
+    };
+    window.addEventListener("cm:queue-write", onQueueWrite);
 
     // Time-to-time sync (offline storage ↔ online database)
     const flushTimer = setInterval(() => {
@@ -144,6 +207,8 @@ export function useSyncPending() {
 
     return () => {
       unsub();
+      if (writeTimer) clearTimeout(writeTimer);
+      window.removeEventListener("cm:queue-write", onQueueWrite);
       clearInterval(flushTimer);
       clearInterval(refreshTimer);
       window.removeEventListener("focus", onWake);

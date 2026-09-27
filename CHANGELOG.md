@@ -44,6 +44,12 @@ All notable changes to this project are documented here. Format follows Keep a C
   - Browser `online`/`offline` events ab sirf hint hain — state unse seedhe kabhi nahi badalta (WiFi ↔ mobile-data switch par bhi koi flicker nahi).
   - Simulation se verify: 3 sec ki lagatar API failures par bhi state ONLINE rehti hai; asli net loss par ~8-10s me Offline (airplane mode me navigator hint se ~0.3s); recovery max 4s.
 - **Offline ka asli reason dikhta hai:** banner/header ab batate hain — `📴 Offline — internet band hai` (no-internet) vs amber `⚠️ Net chalu hai, par server tak nahi pahunch rahe` (server) + header me amber "Server down" chip; dono case me entries queue me save hoti hain.
+- **Sync speed: 5-6 min → ~1 min (queue drain fast + server roundtrips kam):**
+  - Queue ab **6 op ek saath** bhejta hai (pehle ek-ek karke) + khata (customer create) hamesha entries se pehle — temp id remap usi round me ho jata hai.
+  - Har sync op ko **10s timeout** — pehle browser default ~300s (5 min) tha; ek hi latka hua request poora sync rok deta tha (syncingRef block). UI requests ka bhi **20s timeout**.
+  - Server reject (4xx/5xx) wale op ko **exponential backoff** (15s → 2 min max) — ek kharaab op baaki queue ko har round me nahi rokta; net wapas aate hi saara backoff reset.
+  - Naya op queue hote hi **~1.2s me turant sync** (`cm:queue-write` event) — pehle 15s flush intezaar tha.
+  - Server per write **5 DB roundtrip → 3**: `isUserActive` SELECT ab 60s cache me + idempotency ki purani-keys **DELETE scan har write par nahi** (ab ghante me ek baar, bina await).
 
 ## [1.0.24] - 2026-09-21
 

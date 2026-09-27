@@ -3,6 +3,8 @@ import { idempotencyKeys } from "@/db/schema";
 import { eq, and, lt } from "drizzle-orm";
 
 const KEY_TTL = 7 * 24 * 60 * 60 * 1000; // 7 din — purani keys auto-safai
+const SWEEP_MS = 60 * 60 * 1000; // safai ghante me ek baar (har write par nahi)
+let lastSweepAt = 0;
 
 // Pehle claim karo: nayi key insert karo.
 // Insert hui = pehli baar (proceed). Conflict = duplicate (pehle ka result do).
@@ -11,12 +13,16 @@ export async function claimIdempotencyKey(
   userId: number
 ): Promise<{ duplicate: boolean; response: any | null }> {
   try {
-    // Opportunistic safai — best effort
-    try {
-      await db
-        .delete(idempotencyKeys)
-        .where(lt(idempotencyKeys.createdAt, new Date(Date.now() - KEY_TTL)));
-    } catch {}
+    // Opportunistic safai — pehle HAR write par ek DELETE (scan) chalta tha =
+    // entry sync me extra DB roundtrip + badhta table hone par dheerta.
+    // Ab ghante me ek baar aur bina await (fire-and-forget).
+    const now = Date.now();
+    if (now - lastSweepAt > SWEEP_MS) {
+      lastSweepAt = now;
+      Promise.resolve(
+        db.delete(idempotencyKeys).where(lt(idempotencyKeys.createdAt, new Date(now - KEY_TTL)))
+      ).catch(() => {});
+    }
     if (!key || key.length > 100) return { duplicate: false, response: null };
     const inserted = await db
       .insert(idempotencyKeys)
