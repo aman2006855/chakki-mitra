@@ -38,6 +38,12 @@ All notable changes to this project are documented here. Format follows Keep a C
 - Settings me email change (OTP hamesha NAYI email par, `/api/auth/email/change`).
 - "Last used" badge on Email/Google login options.
 - scrypt password hashing with transparent legacy migration.
+- **Online/Offline flap = ZERO (state machine, sirf proof se state change):**
+  - Naya `/api/ping` probe endpoint (koi DB call nahi) — pehle probe `/api/health` par tha jo `SELECT 1` karta tha, isliye DB slow hone par app galat "Offline" bolti thi jabki net bilkul theek tha.
+  - Asymmetric hysteresis: 3 lagatar failed probe = Offline, 1 safal probe = turant Online. Ek akeli API call fail ab state nahi badalti — sirf probe kick karti hai (debounced + starvation-free).
+  - Browser `online`/`offline` events ab sirf hint hain — state unse seedhe kabhi nahi badalta (WiFi ↔ mobile-data switch par bhi koi flicker nahi).
+  - Simulation se verify: 3 sec ki lagatar API failures par bhi state ONLINE rehti hai; asli net loss par ~8-10s me Offline (airplane mode me navigator hint se ~0.3s); recovery max 4s.
+- **Offline ka asli reason dikhta hai:** banner/header ab batate hain — `📴 Offline — internet band hai` (no-internet) vs amber `⚠️ Net chalu hai, par server tak nahi pahunch rahe` (server) + header me amber "Server down" chip; dono case me entries queue me save hoti hain.
 
 ## [1.0.24] - 2026-09-21
 

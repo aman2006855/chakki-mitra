@@ -178,11 +178,51 @@ export function isTempId(id: unknown): id is string {
   return typeof id === "string" && id.startsWith("tmp_");
 }
 
+
+// ============================================================
+// NETWORK STATE MACHINE — "state sirf proof se badalta hai"
+// ============================================================
+// Pehle 3 problem the (isi se online/offline ki flap hoti thi):
+//   1. Probe `/api/health` par tha jo DB call karta hai — DB slow hua to app
+//      "offline" bolta tha jabki net bilkul theek tha.
+//   2. Ek bhi failed API call = foran "offline" (koi confirmation nahi).
+//   3. WebView ke online/offline events seedhe state badal dete the
+//      (WiFi <-> data switch par bhi).
+// Ab:
+//   - Probe = /api/ping (koi DB nahi, 1ms) → sirf connectivity check
+//   - State sirf PROBE ke result se badalta hai (asymmetric hysteresis)
+//   - 1 success = online (foran), 3 lagatar fail = offline (confirm)
+//   - Traffic fail = sirf probe trigger karta hai, state khud nahi badalta
+//   - Offline ka reason bhi pata hota hai: internet band vs server tak nahi
+
+export type OfflineReason = "no-internet" | "server";
+
+const PROBE_URL = `${API_BASE}/api/ping`;
+const PROBE_TIMEOUT_MS = 5000;
+// Asymmetric hysteresis: offline hone ke liye saboot chahiye (3 fail), online
+// hone ke liye ek safal probe kaafi — kyun ki "offline dikhna" hi asli bug tha.
+const FAIL_THRESHOLD = 3;
+const ONLINE_INTERVAL_MS = 45000; // online: har 45s ek bar check
+const OFFLINE_INTERVAL_MS = 4000; // offline/suspect: har 4s try
+const KICK_MIN_GAP_MS = 1000; // kick spam rokne ke liye
+
 let onlineListeners: ((online: boolean) => void)[] = [];
 let _isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
+let _offlineReason: OfflineReason | null = null;
+
+let probeTimer: ReturnType<typeof setTimeout> | null = null;
+let nextProbeAt = 0;
+let lastProbeAt = 0;
+let probeInFlight = false;
+let failStreak = 0;
 
 export function isOnline(): boolean {
   return _isOnline;
+}
+
+/** Net band hai to kyun: "no-internet" (phone ka net) ya "server" (net hai par server tak nahi) */
+export function getOfflineReason(): OfflineReason | null {
+  return _offlineReason;
 }
 
 function setOnlineState(value: boolean): void {
@@ -193,54 +233,35 @@ function setOnlineState(value: boolean): void {
   } catch {}
 }
 
-// Heartbeat: asli fetch result se state sudharo.
-// navigator.onLine WebView me jhooth bolta hai (airplane mode me bhi "online") —
-// fetch fail = sach me offline, fetch success = sach me online.
-export function reportNetworkResult(ok: boolean): void {
-  setOnlineState(ok);
+function markOnline(): void {
+  _offlineReason = null;
+  setOnlineState(true);
+}
+
+function markOffline(reason: OfflineReason): void {
+  _offlineReason = reason;
+  setOnlineState(false);
 }
 
 export function onOnlineChange(cb: (online: boolean) => void): () => void {
   onlineListeners.push(cb);
-  return () => { onlineListeners = onlineListeners.filter((l) => l !== cb); };
+  return () => {
+    onlineListeners = onlineListeners.filter((l) => l !== cb);
+  };
 }
 
-if (typeof window !== "undefined") {
-  window.addEventListener("online", () => {
-    setOnlineState(true);
-    kickProbe();
-  });
-  window.addEventListener("offline", () => {
-    setOnlineState(false);
-  });
-}
-
-// ---- Network heartbeat (DEADLOCK FIX) ----
-// Pehle: ek fetch fail = offline → aur uske baad api() fetch se pehle hi ruk jata
-// tha → reportNetworkResult(true) kabhi call hi nahi hota → "offline" hamesha
-// chipka rehta tha aur sync kabhi start nahi hota tha (net chalu ho kar bhi).
-// Ab: offline state me periodik probe se state wapas online aati hai.
-const PROBE_URL = `${API_BASE}/api/health`;
-const OFFLINE_RETRY_MS = 6000; // offline: har 6s try — jaldi wapas aaye
-const ONLINE_RETRY_MS = 60000; // online: 60s me ek baar state check
-
-let probeTimer: ReturnType<typeof setTimeout> | null = null;
-let probeInFlight = false;
-let failStreak = 0;
-
+// Simple request — koi extra header nahi, preflight ki zarurat hi na pade.
+// Koi bhi response (4xx/5xx bhi) = net chalu hai.
 async function fetchReachable(): Promise<boolean> {
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 8000);
+  const t = setTimeout(() => ctrl.abort(), PROBE_TIMEOUT_MS);
   try {
-    // Simple request (koi extra header nahi) — preflight ki zarurat hi na pade,
-    // chaho CORS issue ho tab bhi reachability sahi batao
     const res = await fetch(PROBE_URL, {
       method: "GET",
       cache: "no-store",
       signal: ctrl.signal,
       credentials: "omit",
     });
-    // Response aaya (chaho 4xx/5xx ho) = server tak net pahunch raha hai
     return res.status > 0;
   } catch {
     return false;
@@ -249,74 +270,108 @@ async function fetchReachable(): Promise<boolean> {
   }
 }
 
-/**
- * Probe karo ki server sach me reachable hai aur state update karo.
- * @param force ek hi failure par offline maano (turant recovery chahiye jab state galat ho)
- */
-export async function probeNetwork(force = false): Promise<boolean> {
-  if (probeInFlight) return _isOnline;
-  probeInFlight = true;
-  try {
-    const okRes = await fetchReachable();
-    if (okRes) {
-      failStreak = 0;
-      setOnlineState(true);
-      return true;
-    }
-    failStreak++;
-    // Ek slow/dropped probe par turant offline mat maano — do baar fail ho tabhi
-    // (jab state pehle se offline ho to waise bhi offline hi rehna hai)
-    if (force || failStreak >= 2 || !_isOnline) setOnlineState(false);
-    return false;
-  } finally {
-    probeInFlight = false;
+function decide(reachable: boolean): void {
+  if (reachable) {
+    // Ek bhi safal probe = net chalu — foran online (jaldi recovery)
+    failStreak = 0;
+    markOnline();
+    return;
+  }
+  failStreak++;
+  const noNet = typeof navigator !== "undefined" && navigator.onLine === false;
+  // Phone ka apna internet band = pakka offline. Warna probe hi decide karega.
+  if (failStreak >= FAIL_THRESHOLD || noNet) {
+    markOffline(noNet ? "no-internet" : "server");
   }
 }
 
-function scheduleProbe(delay?: number): void {
+function schedule(delay?: number): void {
+  const wait = delay ?? (_isOnline && failStreak === 0 ? ONLINE_INTERVAL_MS : OFFLINE_INTERVAL_MS);
   if (probeTimer) clearTimeout(probeTimer);
-  // Online par ek failure ko turant confirm karo (6s) — jaldi offline pata chale
-  const wait = delay ?? (_isOnline && failStreak === 0 ? ONLINE_RETRY_MS : OFFLINE_RETRY_MS);
+  nextProbeAt = Date.now() + wait;
   probeTimer = setTimeout(runProbe, wait);
 }
 
 async function runProbe(): Promise<void> {
+  if (probeTimer) {
+    clearTimeout(probeTimer);
+    probeTimer = null;
+  }
+  if (probeInFlight) {
+    schedule();
+    return;
+  }
+  probeInFlight = true;
+  lastProbeAt = Date.now();
   try {
-    await probeNetwork();
+    decide(await fetchReachable());
   } catch {}
-  scheduleProbe();
+  finally {
+    probeInFlight = false;
+    schedule();
+  }
 }
 
+/** Turant ek probe chahiye (debounced + starvation-free). */
 function kickProbe(): void {
-  // State galat ho to turant sudharo (focus/online event par)
-  if (!_isOnline || probeTimer === null) {
-    if (probeTimer) clearTimeout(probeTimer);
-    probeTimer = setTimeout(runProbe, 50);
+  if (probeInFlight) return;
+  if (probeTimer && nextProbeAt - Date.now() <= 1500) return; // already jaldi aane wala hai
+  if (Date.now() - lastProbeAt < KICK_MIN_GAP_MS) return;
+  schedule(50);
+}
+
+/**
+ * Asli API call ka result. SUCCESS = pakka proof hai (online).
+ * FAIL = proof NAHI — state mat badlo, sirf probe chalao (flap yahi rokta hai).
+ */
+export function reportNetworkResult(ok: boolean): void {
+  if (ok) {
+    failStreak = 0;
+    markOnline();
+    return;
   }
+  kickProbe();
+}
+
+/** Ek probe abhi chala kar result batao (sync wagarah ke liye). */
+export async function probeNetwork(_force = false): Promise<boolean> {
+  if (probeInFlight) return _isOnline;
+  await runProbe();
+  return _isOnline;
 }
 
 /** Koi bhi caller — jaise api() ne offline face dekha — turant probe chahiye. */
 export function requestNetworkProbe(): void {
-  kickProbe();
+  if (!probeInFlight) kickProbe();
 }
 
 /**
  * Heartbeat start karo — module load par ek hi baar chale.
- * Offline = har 6s probe, online = har 60s check.
+ * Online = har 45s check, offline/suspect = har 4s try.
  */
 export function startNetworkHeartbeat(): void {
   if (typeof window === "undefined") return;
   const w = window as any;
   if (w.__cm_heartbeat) return;
   w.__cm_heartbeat = true;
-  window.addEventListener("online", kickProbe);
-  window.addEventListener("focus", kickProbe);
+
+  // Browser events = SIRF hint. State kabhi seedhe nahi badalte — sirf decide()
+  // (probe result) hi state change karta hai, tabhi flap possible hi nahi hai.
+  window.addEventListener("online", () => kickProbe());
+  window.addEventListener("offline", () => {
+    // Probe foran chalao. Airplane mode = fetch fail + navigator offline →
+    // decide() turant "no-internet" lagayega. Galat hint hua to probe OK
+    // aayega aur state online hi rahegi.
+    kickProbe();
+  });
+  window.addEventListener("focus", () => kickProbe());
+  window.addEventListener("pageshow", () => kickProbe());
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) kickProbe();
   });
-  window.addEventListener("pageshow", kickProbe);
+
   // Pehla probe jaldi — app khulte hi state verify ho jaye
-  scheduleProbe(1500);
+  schedule(1200);
 }
 
 if (typeof window !== "undefined") {

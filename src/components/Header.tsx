@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Wheat, LogOut, Wifi, WifiOff, Headphones } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { isOnline, onOnlineChange, getPendingOps } from "@/lib/offline-db";
+import { isOnline, onOnlineChange, getPendingOps, getOfflineReason } from "@/lib/offline-db";
 import { api } from "@/lib/api";
 
 interface HeaderProps {
@@ -15,19 +15,25 @@ interface HeaderProps {
 export default function Header({ shopName, onSupportClick }: HeaderProps) {
   const { logout } = useAuth();
   const [online, setOnline] = useState(true);
+  const [reason, setReason] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [supportDot, setSupportDot] = useState(false);
 
   useEffect(() => {
     setOnline(isOnline());
+    setReason(getOfflineReason());
     setPendingCount(getPendingOps().length);
     const unsub = onOnlineChange((o) => {
       setOnline(o);
+      setReason(getOfflineReason());
       if (o) {
         setTimeout(() => setPendingCount(getPendingOps().length), 1000);
       }
     });
-    const interval = setInterval(() => setPendingCount(getPendingOps().length), 3000);
+    const interval = setInterval(() => {
+      setPendingCount(getPendingOps().length);
+      setReason(getOfflineReason());
+    }, 3000);
     return () => { unsub(); clearInterval(interval); };
   }, []);
 
@@ -59,11 +65,20 @@ export default function Header({ shopName, onSupportClick }: HeaderProps) {
             <h1 className="text-xl font-bold tracking-wide">चक्की मित्र</h1>
           </div>
           <div className="flex items-center gap-2">
-            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
-              online ? "bg-green-500/20 text-green-100" : "bg-red-500/20 text-red-200"
-            }`}>
+            <div
+              className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                online ? "bg-green-500/20 text-green-100" : reason === "server" ? "bg-amber-400/25 text-amber-100" : "bg-red-500/20 text-red-200"
+              }`}
+              title={
+                online
+                  ? "Connected"
+                  : reason === "server"
+                    ? "Internet chalu hai par server tak nahi pahunch pa rahe — entries queue me save hain"
+                    : "Internet band hai — entries phone me save hain"
+              }
+            >
               {online ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-              {online ? "Online" : "Offline"}
+              {online ? "Online" : reason === "server" ? "Server down" : "Offline"}
               {pendingCount > 0 && (
                 <span className="ml-0.5 bg-white/20 rounded-full px-1" title="Sync pending">
                   ⏳{pendingCount}
