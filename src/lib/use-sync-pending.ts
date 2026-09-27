@@ -7,6 +7,7 @@ import {
   addPendingOp,
   removePendingOp,
   updatePendingOp,
+  purgeDeadOps,
   resetPendingOpBackoff,
   isOnline,
   onOnlineChange,
@@ -154,6 +155,9 @@ export function useSyncPending() {
       const recovered = await probeNetwork(true);
       if (!recovered) return;
     }
+    // Sabse pehle queue se dead op hatao (jo server par kabhi nahi chal
+    // sakte — badge ko hamesha-⏳ banate the), phir orphan heal karo
+    purgeDeadOps();
     let queued = getPendingOps();
     if (queued.length === 0) {
       if (opts?.refresh) dispatchRefresh(0);

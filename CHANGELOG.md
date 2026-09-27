@@ -60,6 +60,8 @@ All notable changes to this project are documented here. Format follows Keep a C
 - Offline khata delete ab phone se hi saaf hota hai (pending record + queued ops) — ghost khata ya orphan entry nahi banti.
 - **Settings → ऐप जानकारी me Sync status:** `✅ सब sync` / `⏳N sync ho raha` / `⚠️N ruki — Retry` + server ka error text — ab ek screenshot me poori diagnosis (version + wajah) milegi.
 
+- **Purana poison op auto-clear (`purgeDeadOps`):** queue me jo op server par KABHI nahi chal sakta wo sync shuru hote hi hat jata hai — `PUT /api/customers` jisme id integer nahi (tmp_/missing → hamesha 400) aur `DELETE /api/transactions?id=<tmp_/NaN>` (hamesha 404). Data loss nahi — ye op server par kabhi accept hi nahi hote the. Purana atka ⏳ badge isi se khud clear hoga.
+
 ## [1.0.24] - 2026-09-21
 
 ### Added

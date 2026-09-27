@@ -113,6 +113,34 @@ export function updatePendingOp(id: string, patch: Partial<PendingOp>): void {
   } catch {}
 }
 
+// Startup/migration: queue se wo op hatao jo server par KABHI nahi chal
+// sakte — yehi badge ko hamesha-⏳ banate the. Data ka nuksaan NAHI: ye op
+// server code se proof ke saath hamesha reject hote the (400/404).
+export function purgeDeadOps(): number {
+  try {
+    const ops = getPendingOps();
+    const alive = ops.filter((op) => {
+      // PUT /api/customers: body.id integer hona hi chahiye (server:
+      // Number.isInteger check → warna hamesha 400). tmp_/missing id = dead.
+      if (op.method === "PUT" && String(op.url || "").replace(/\?.*$/, "") === "/api/customers") {
+        if (!Number.isInteger(Number(op.body?.id))) return false;
+      }
+      // DELETE /api/transactions?id=NaN/tmp_ → koi row match nahi → hamesha 404
+      if (op.method === "DELETE" && String(op.url || "").includes("/api/transactions")) {
+        const m = String(op.url || "").match(/[?&]id=([^&]+)/);
+        if (m && !Number.isInteger(Number(decodeURIComponent(m[1])))) return false;
+      }
+      return true;
+    });
+    if (alive.length !== ops.length) {
+      localStorage.setItem(PENDING_KEY, JSON.stringify(alive));
+    }
+    return ops.length - alive.length;
+  } catch {
+    return 0;
+  }
+}
+
 // Net wapas aate hi saara backoff hata do — nahi to queue wapas turant drain na ho
 export function resetPendingOpBackoff(): void {
   try {
