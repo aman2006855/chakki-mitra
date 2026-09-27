@@ -62,6 +62,10 @@ All notable changes to this project are documented here. Format follows Keep a C
 
 - **Purana poison op auto-clear (`purgeDeadOps`):** queue me jo op server par KABHI nahi chal sakta wo sync shuru hote hi hat jata hai — `PUT /api/customers` jisme id integer nahi (tmp_/missing → hamesha 400) aur `DELETE /api/transactions?id=<tmp_/NaN>` (hamesha 404). Data loss nahi — ye op server par kabhi accept hi nahi hote the. Purana atka ⏳ badge isi se khud clear hoga.
 
+- **Stuck-1 ka aakhri root cause: `removePendingOp` me try/catch hi NAHI tha.** Phone storage full hote hi entry server par pahunchne ke baad bhi phone se hat-ti nahi thi — error kahin record nahi hota tha (attempts=0, stuck=0), isliye banner hamesha green `sync ho raha hai` dikhata tha. Proof: v1.0.62 + Settings `stuck=0` phir bhi badge 1.
+- **Sab localStorage writes ab `safeSetItem` se:** full hone par sirf cache (dikhawa data) hata kar jagah banti hai — queue/khata/SMS kabhi nahi. Sab fail ho to `storageFull` flag → banner/Settings batayenge `phone storage full hai`.
+- **Backoff bhi ab stuck me gina jata hai** (pehle green jhooth dikhta tha) + server 5xx/429 lagatar 5 fail = permanent reject (Retry se wapas). Settings sync row me `HTTP status · N try` detail.
+
 ## [1.0.24] - 2026-09-21
 
 ### Added

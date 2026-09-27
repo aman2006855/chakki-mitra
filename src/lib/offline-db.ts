@@ -47,8 +47,41 @@ export function getCached(url: string): any | null {
 export function setCache(url: string, data: any): void {
   try {
     const entry: CacheEntry = { data, timestamp: Date.now() };
-    localStorage.setItem(getCacheKey(url), JSON.stringify(entry));
+    safeSetItem(getCacheKey(url), JSON.stringify(entry));
   } catch {}
+}
+
+let _storageFull = false;
+
+/**
+ * localStorage write — full hone par sirf CACHE (dikhawa data) hata kar jagah
+ * banao, user ka data (queue/khata/SMS) KABHI nahi. Sab jagah hatna to
+ * _storageFull flag lagao taaki UI bata sake "phone storage full hai".
+ */
+function safeSetItem(key: string, value: string): boolean {
+  try {
+    localStorage.setItem(key, value);
+    _storageFull = false;
+    return true;
+  } catch {}
+  try {
+    const cacheKeys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(CACHE_PREFIX)) cacheKeys.push(k);
+    }
+    cacheKeys.slice(0, 80).forEach((k) => {
+      try {
+        localStorage.removeItem(k);
+      } catch {}
+    });
+    localStorage.setItem(key, value);
+    _storageFull = false;
+    return true;
+  } catch {
+    _storageFull = true;
+    return false;
+  }
 }
 
 export function getPendingOps(): PendingOp[] {
@@ -62,35 +95,21 @@ export function getPendingOps(): PendingOp[] {
 export function addPendingOp(op: PendingOp): boolean {
   const ops = getPendingOps();
   ops.push(op);
-  try {
-    localStorage.setItem(PENDING_KEY, JSON.stringify(ops));
-    return true;
-  } catch {
-    // Storage full — cache (sirf dikhawa data) hata kar dobara try karo.
-    // Entry KABHI chup-chaap drop nahi honi chahiye.
-    try {
-      const cacheKeys: string[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k && k.startsWith(CACHE_PREFIX)) cacheKeys.push(k);
-      }
-      cacheKeys.slice(0, 60).forEach((k) => localStorage.removeItem(k));
-      localStorage.setItem(PENDING_KEY, JSON.stringify(ops));
-      return true;
-    } catch {
-      return false;
-    }
-  }
+  // Entry KABHI chup-chaap drop nahi honi chahiye (storage full → cache evict)
+  return safeSetItem(PENDING_KEY, JSON.stringify(ops));
 }
 
+// NOTE: isme pehle try/catch NAHI tha — storage full hone par ye throw karta
+// tha aur sync ke `catch {}` me nigal jata tha: entry server par pahunch chuki
+// hoti thi par badge HAMESHA ⏳ atka rehta tha (v1.0.62 tak ka stuck-1 bug).
 export function removePendingOp(id: string): void {
   const ops = getPendingOps().filter((op) => op.id !== id);
-  localStorage.setItem(PENDING_KEY, JSON.stringify(ops));
+  safeSetItem(PENDING_KEY, JSON.stringify(ops));
 }
 
 export function clearPendingOps(): void {
   try {
-    localStorage.setItem(PENDING_KEY, "[]");
+    safeSetItem(PENDING_KEY, "[]");
   } catch {}
 }
 
@@ -102,14 +121,14 @@ export function dropTempCustomerOps(tempId: string): void {
     const ops = getPendingOps().filter(
       (op) => op.body?.tempId !== tempId && op.body?.customerId !== tempId
     );
-    localStorage.setItem(PENDING_KEY, JSON.stringify(ops));
+    safeSetItem(PENDING_KEY, JSON.stringify(ops));
   } catch {}
 }
 
 export function updatePendingOp(id: string, patch: Partial<PendingOp>): void {
   try {
     const ops = getPendingOps().map((op) => (op.id === id ? { ...op, ...patch } : op));
-    localStorage.setItem(PENDING_KEY, JSON.stringify(ops));
+    safeSetItem(PENDING_KEY, JSON.stringify(ops));
   } catch {}
 }
 
@@ -133,7 +152,7 @@ export function purgeDeadOps(): number {
       return true;
     });
     if (alive.length !== ops.length) {
-      localStorage.setItem(PENDING_KEY, JSON.stringify(alive));
+      safeSetItem(PENDING_KEY, JSON.stringify(alive));
     }
     return ops.length - alive.length;
   } catch {
@@ -147,7 +166,7 @@ export function resetPendingOpBackoff(): void {
     const ops = getPendingOps().map((op) =>
       op.attempts || op.nextAttemptAt ? { ...op, attempts: 0, nextAttemptAt: 0 } : op
     );
-    localStorage.setItem(PENDING_KEY, JSON.stringify(ops));
+    safeSetItem(PENDING_KEY, JSON.stringify(ops));
   } catch {}
 }
 
@@ -159,7 +178,7 @@ export function forceRetryAllPendingOps(): void {
         ? { ...op, attempts: 0, nextAttemptAt: 0, permanent: false, lastStatus: 0, lastError: "" }
         : op
     );
-    localStorage.setItem(PENDING_KEY, JSON.stringify(ops));
+    safeSetItem(PENDING_KEY, JSON.stringify(ops));
   } catch {}
 }
 
@@ -173,24 +192,56 @@ export function getPendingOpsSummary(): {
   stuck: number;
   rejected: number;
   orphan: number;
+  backingOff: number;
   lastError: string | null;
+  lastStatus: number;
+  maxAttempts: number;
+  storageFull: boolean;
 } {
   try {
     const ops = getPendingOps();
     let rejected = 0;
     let orphan = 0;
+    let backingOff = 0;
     let lastError: string | null = null;
+    let lastStatus = 0;
+    let maxAttempts = 0;
     for (const op of ops) {
+      const att = op.attempts || 0;
+      if (att > maxAttempts) maxAttempts = att;
       if (op.permanent) {
         rejected++;
-        if (!lastError && op.lastError) lastError = op.lastError;
+        if (!lastError && op.lastError) {
+          lastError = op.lastError;
+          lastStatus = op.lastStatus || 0;
+        }
       } else if (isTempId(op.body?.customerId) && !resolvePendingCustomer(op.body.customerId)) {
         orphan++;
+      } else if (att > 0) {
+        // Server 5xx/429 par backoff — "sync ho raha" bolna jhooth hoga
+        backingOff++;
+        if (!lastError && op.lastError) {
+          lastError = op.lastError;
+          lastStatus = op.lastStatus || 0;
+        }
       }
     }
-    return { total: ops.length, stuck: rejected + orphan, rejected, orphan, lastError };
+    return {
+      total: ops.length,
+      stuck: rejected + orphan + backingOff,
+      rejected,
+      orphan,
+      backingOff,
+      lastError,
+      lastStatus,
+      maxAttempts,
+      storageFull: _storageFull,
+    };
   } catch {
-    return { total: 0, stuck: 0, rejected: 0, orphan: 0, lastError: null };
+    return {
+      total: 0, stuck: 0, rejected: 0, orphan: 0, backingOff: 0,
+      lastError: null, lastStatus: 0, maxAttempts: 0, storageFull: false,
+    };
   }
 }
 
@@ -221,13 +272,13 @@ export function addPendingSms(sms: PendingSms): void {
     // Same customer ka purana pending SMS replace (duplicate SMS na jaye)
     const filtered = list.filter((s) => s.phone !== sms.phone || s.message !== sms.message);
     filtered.push(sms);
-    localStorage.setItem(SMS_KEY, JSON.stringify(filtered.slice(-50)));
+    safeSetItem(SMS_KEY, JSON.stringify(filtered.slice(-50)));
   } catch {}
 }
 
 export function removePendingSms(id: string): void {
   try {
-    localStorage.setItem(SMS_KEY, JSON.stringify(getPendingSms().filter((s) => s.id !== id)));
+    safeSetItem(SMS_KEY, JSON.stringify(getPendingSms().filter((s) => s.id !== id)));
   } catch {}
 }
 
@@ -256,7 +307,7 @@ export function getPendingCustomers(): PendingCustomer[] {
     const fresh = list.filter((x: PendingCustomer) => x && x.tempId && (x.timestamp || 0) > cutoff);
     if (fresh.length !== list.length) {
       try {
-        localStorage.setItem(PC_KEY, JSON.stringify(fresh));
+        safeSetItem(PC_KEY, JSON.stringify(fresh));
       } catch {}
     }
     return fresh;
@@ -267,7 +318,7 @@ export function getPendingCustomers(): PendingCustomer[] {
 
 function savePendingCustomers(list: PendingCustomer[]): void {
   try {
-    localStorage.setItem(PC_KEY, JSON.stringify(list.slice(-200)));
+    safeSetItem(PC_KEY, JSON.stringify(list.slice(-200)));
   } catch {}
 }
 

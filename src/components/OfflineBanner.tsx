@@ -14,7 +14,10 @@ import {
 import { isNativePlatform } from "@/lib/capacitor";
 import BackgroundSms from "@/plugins/background-sms";
 
-type Summary = { total: number; stuck: number; rejected: number; orphan: number; lastError: string | null };
+type Summary = {
+  total: number; stuck: number; rejected: number; orphan: number; backingOff: number;
+  lastError: string | null; lastStatus: number; maxAttempts: number; storageFull: boolean;
+};
 
 // Offline banner — net jaate hi dikhe: phone ka save data chal raha hai.
 // + Pending SMS ek-tap resend (offline entry ka chhoota SMS).
@@ -22,7 +25,10 @@ type Summary = { total: number; stuck: number; rejected: number; orphan: number;
 export default function OfflineBanner() {
   const [online, setOnline] = useState(true);
   const [reason, setReason] = useState<string | null>(null);
-  const [summary, setSummary] = useState<Summary>({ total: 0, stuck: 0, rejected: 0, orphan: 0, lastError: null });
+  const [summary, setSummary] = useState<Summary>({
+    total: 0, stuck: 0, rejected: 0, orphan: 0, backingOff: 0,
+    lastError: null, lastStatus: 0, maxAttempts: 0, storageFull: false,
+  });
   const [pendingSms, setPendingSms] = useState(0);
   const [sendingSms, setSendingSms] = useState(false);
   const [smsMsg, setSmsMsg] = useState("");
@@ -86,7 +92,7 @@ export default function OfflineBanner() {
     refreshCounts();
   }
 
-  const { total, stuck, rejected, orphan, lastError } = summary;
+  const { total, stuck, rejected, orphan, lastError, maxAttempts, storageFull } = summary;
   if (online && total === 0 && pendingSms === 0 && !smsMsg && !retryMsg) return null;
 
   // Offline ka asli wajah dikhao — "net chalu hai par server tak nahi" aur
@@ -97,12 +103,15 @@ export default function OfflineBanner() {
     : "⚠️ Net chalu hai, par server tak nahi pahunch rahe — entries queue me save hain";
 
   // Stuck ka karan user ko dikhao (isise hume bhi pata chalta hai kya atka hai)
-  const stuckReason =
-    rejected > 0
+  const stuckReason = storageFull
+    ? "phone storage full hai — purana data saaf karo"
+    : rejected > 0
       ? lastError
         ? `server ne mana kiya: ${lastError}`
         : "server reject"
-      : "khate (temp id) ka sync ruka";
+      : orphan > 0
+        ? "khate (temp id) ka sync ruka"
+        : `server busy — retry me${maxAttempts > 0 ? ` (${maxAttempts} try)` : ""}`;
   const stuckStyle = rejected > 0 ? "bg-amber-700 text-white" : "bg-amber-500 text-white";
 
   return (

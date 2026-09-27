@@ -99,11 +99,14 @@ async function syncPendingOp(op: { id: string; method: string; url: string; body
 // 4xx = dobara bhejne par bhi wahi hoga (validation/404/session) — isliye
 // permanent mark karke auto-retry band, warna badge HAMESHA atka rehta tha.
 const PERMANENT_STATUS = new Set([400, 401, 403, 404, 409, 410, 413, 422]);
+// Server 5xx/429 lagatar 5 baar fail = ye op aise nahi jayega (jaise FK tootna)
+// — permanent karke banner me dikhao, warna backoff me "sync ho raha" ka jhooth chalta rehta
+const MAX_SERVER_ATTEMPTS = 5;
 
 function markFailed(op: PendingOp, status: number, message: string): void {
   if (status === 0) return;
   const attempts = (op.attempts || 0) + 1;
-  const permanent = !!op.permanent || PERMANENT_STATUS.has(status);
+  const permanent = !!op.permanent || PERMANENT_STATUS.has(status) || attempts >= MAX_SERVER_ATTEMPTS;
   const delay = Math.min(BACKOFF_BASE_MS * Math.pow(2, attempts - 1), BACKOFF_MAX_MS);
   updatePendingOp(op.id, {
     attempts,

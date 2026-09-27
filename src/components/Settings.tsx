@@ -60,8 +60,12 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
     stuck: number;
     rejected: number;
     orphan: number;
+    backingOff: number;
     lastError: string | null;
-  }>({ total: 0, stuck: 0, rejected: 0, orphan: 0, lastError: null });
+    lastStatus: number;
+    maxAttempts: number;
+    storageFull: boolean;
+  }>({ total: 0, stuck: 0, rejected: 0, orphan: 0, backingOff: 0, lastError: null, lastStatus: 0, maxAttempts: 0, storageFull: false });
 
   useEffect(() => {
     const refreshSync = () => {
@@ -706,9 +710,23 @@ export default function Settings({ settings, onUpdate }: SettingsProps) {
               <span className="text-orange-600 text-xs font-medium">⏳{syncDiag.total} sync ho raha...</span>
             )}
           </div>
-          {syncDiag.stuck > 0 && syncDiag.lastError ? (
+          {syncDiag.stuck > 0 ? (
             <div className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1">
-              ⚠️ {syncDiag.lastError}
+              ⚠️ {syncDiag.storageFull
+                ? "Phone storage full hai — purana data saaf karo"
+                : syncDiag.lastError || (syncDiag.orphan > 0 ? "Khate ka sync ruka hai" : "Server busy — retry me")}
+              {syncDiag.lastStatus > 0 || syncDiag.maxAttempts > 0 ? (
+                <>
+                  {" ("}
+                  {[
+                    syncDiag.lastStatus > 0 ? `HTTP ${syncDiag.lastStatus}` : "",
+                    syncDiag.maxAttempts > 0 ? `${syncDiag.maxAttempts} try` : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  {")"}
+                </>
+              ) : null}
             </div>
           ) : null}
         </div>
