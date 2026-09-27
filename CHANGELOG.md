@@ -50,6 +50,11 @@ All notable changes to this project are documented here. Format follows Keep a C
   - Server reject (4xx/5xx) wale op ko **exponential backoff** (15s → 2 min max) — ek kharaab op baaki queue ko har round me nahi rokta; net wapas aate hi saara backoff reset.
   - Naya op queue hote hi **~1.2s me turant sync** (`cm:queue-write` event) — pehle 15s flush intezaar tha.
   - Server per write **5 DB roundtrip → 3**: `isUserActive` SELECT ab 60s cache me + idempotency ki purani-keys **DELETE scan har write par nahi** (ab ghante me ek baar, bina await).
+- **Stuck ⏳ badge fix (badge kabhi 0 nahi hota tha):**
+  - **Orphan entry self-heal:** entry temp khata (`tmp_...`) par atak sakti thi agar khata ka create op queue se gayab tha ya mapping kabhi bani hi nahi — wo op hamesha `ready:false` rehta tha (⏳1 hamesha, kabhi sync nahi). Ab sync se pehle orphan detect hota hai aur server par phone se create dobara bheja jata hai (dedupe = wahi row wapas, id aate hi entry **usi drain me** khul jati hai).
+  - Server **4xx (400/401/404/422...)** = permanent reject → auto-retry band (pehle backoff me bhi har round koshish karte the → badge kabhi khatam nahi hota). Sirf manual Retry.
+  - **Banner ab sach dikhata hai:** green `✅ Net wapas! ⏳N sync ho raha hai` (asli me chal raha) vs amber `⚠️ N entry ruki — {server ka error}` + **🔄 Retry** button (backoff/permanent hata kar foran bhejta hai).
+  - Storage full par entry ab fake success nahi deti: pehle cache eviction try, warna `❌ सेव नहीं हो पाई` (507) — chup-chaap entry gayab hone se bachav.
 
 ## [1.0.24] - 2026-09-21
 

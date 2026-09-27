@@ -19,6 +19,10 @@ export interface PendingOp {
   attempts?: number;
   /** Is waqt tak is op ko dobara mat bhejo (poison op baaki queue ko na roke) */
   nextAttemptAt?: number;
+  /** Server ne 4xx me permanent reject kiya — auto-retry band, sirf manual retry */
+  permanent?: boolean;
+  lastStatus?: number;
+  lastError?: string;
 }
 
 function getCacheKey(url: string): string {
@@ -55,10 +59,28 @@ export function getPendingOps(): PendingOp[] {
   }
 }
 
-export function addPendingOp(op: PendingOp): void {
+export function addPendingOp(op: PendingOp): boolean {
   const ops = getPendingOps();
   ops.push(op);
-  localStorage.setItem(PENDING_KEY, JSON.stringify(ops));
+  try {
+    localStorage.setItem(PENDING_KEY, JSON.stringify(ops));
+    return true;
+  } catch {
+    // Storage full — cache (sirf dikhawa data) hata kar dobara try karo.
+    // Entry KABHI chup-chaap drop nahi honi chahiye.
+    try {
+      const cacheKeys: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(CACHE_PREFIX)) cacheKeys.push(k);
+      }
+      cacheKeys.slice(0, 60).forEach((k) => localStorage.removeItem(k));
+      localStorage.setItem(PENDING_KEY, JSON.stringify(ops));
+      return true;
+    } catch {
+      return false;
+    }
+  }
 }
 
 export function removePendingOp(id: string): void {
@@ -87,6 +109,49 @@ export function resetPendingOpBackoff(): void {
     );
     localStorage.setItem(PENDING_KEY, JSON.stringify(ops));
   } catch {}
+}
+
+/** User ne "Retry" dabaya — permanent reject + backoff sab hatao, ab foran bhejo */
+export function forceRetryAllPendingOps(): void {
+  try {
+    const ops = getPendingOps().map((op) =>
+      op.attempts || op.nextAttemptAt || op.permanent || op.lastStatus
+        ? { ...op, attempts: 0, nextAttemptAt: 0, permanent: false, lastStatus: 0, lastError: "" }
+        : op
+    );
+    localStorage.setItem(PENDING_KEY, JSON.stringify(ops));
+  } catch {}
+}
+
+/**
+ * Banner/ke badge ke liye sach — kitne op atke hue hain aur kyun.
+ * stuck = server ne permanent reject kiya (4xx) ya entry temp khate par lagi hai
+ * jiska asli id kabhi nahi mila (ready:false deadlock).
+ */
+export function getPendingOpsSummary(): {
+  total: number;
+  stuck: number;
+  rejected: number;
+  orphan: number;
+  lastError: string | null;
+} {
+  try {
+    const ops = getPendingOps();
+    let rejected = 0;
+    let orphan = 0;
+    let lastError: string | null = null;
+    for (const op of ops) {
+      if (op.permanent) {
+        rejected++;
+        if (!lastError && op.lastError) lastError = op.lastError;
+      } else if (isTempId(op.body?.customerId) && !resolvePendingCustomer(op.body.customerId)) {
+        orphan++;
+      }
+    }
+    return { total: ops.length, stuck: rejected + orphan, rejected, orphan, lastError };
+  } catch {
+    return { total: 0, stuck: 0, rejected: 0, orphan: 0, lastError: null };
+  }
 }
 
 // ---- Pending SMS ----
@@ -138,6 +203,8 @@ export interface PendingCustomer {
   address: string;
   timestamp: number;
   realId?: number | null;
+  /** Orphan-heal kab kiya tha (bar bar create op na bane) */
+  healedAt?: number;
 }
 
 export function getPendingCustomers(): PendingCustomer[] {
@@ -192,6 +259,14 @@ export function resolvePendingCustomer(tempId: string): number | null {
 export function removePendingCustomer(tempId: string): void {
   try {
     savePendingCustomers(getPendingCustomers().filter((x) => x.tempId !== tempId));
+  } catch {}
+}
+
+export function markPendingCustomerHealed(tempId: string): void {
+  try {
+    savePendingCustomers(
+      getPendingCustomers().map((x) => (x.tempId === tempId ? { ...x, healedAt: Date.now() } : x))
+    );
   } catch {}
 }
 

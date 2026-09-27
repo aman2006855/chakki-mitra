@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { API_BASE } from "./config";
 import {
   getPendingOps,
+  addPendingOp,
   removePendingOp,
   updatePendingOp,
   resetPendingOpBackoff,
@@ -13,6 +14,8 @@ import {
   reportNetworkResult,
   getPendingCustomers,
   markPendingCustomerSynced,
+  markPendingCustomerHealed,
+  resolvePendingCustomer,
   isTempId,
   type PendingOp,
 } from "./offline-db";
@@ -92,11 +95,52 @@ async function syncPendingOp(op: { id: string; method: string; url: string; body
 
 // Backoff sirf tab jab SERVER ne reject kiya (4xx/5xx). Network fail (status 0)
 // par nahi — waise bhi poori queue offline ho to syncAll probe se pehle hi ruk jata hai.
-function markFailed(op: PendingOp, status: number): void {
+// 4xx = dobara bhejne par bhi wahi hoga (validation/404/session) — isliye
+// permanent mark karke auto-retry band, warna badge HAMESHA atka rehta tha.
+const PERMANENT_STATUS = new Set([400, 401, 403, 404, 409, 410, 413, 422]);
+
+function markFailed(op: PendingOp, status: number, message: string): void {
   if (status === 0) return;
   const attempts = (op.attempts || 0) + 1;
+  const permanent = !!op.permanent || PERMANENT_STATUS.has(status);
   const delay = Math.min(BACKOFF_BASE_MS * Math.pow(2, attempts - 1), BACKOFF_MAX_MS);
-  updatePendingOp(op.id, { attempts, nextAttemptAt: Date.now() + delay });
+  updatePendingOp(op.id, {
+    attempts,
+    nextAttemptAt: permanent ? 0 : Date.now() + delay,
+    permanent,
+    lastStatus: status,
+    lastError: message || `HTTP ${status}`,
+  });
+}
+
+// ORPHAN SELF-HEAL: entry temp khata (tmp_...) par atki hai, par us khata ka
+// create op queue me nahi hai ya mapping kabhi bani hi nahi → op hamesha
+// ready:false rehta tha (badge hamesha atka). Ab server par phone se dobara
+// bhejo — server dedupe karta hai, wahi row asli id ke saath wapas aati hai.
+function healOrphanedEntries(queued: PendingOp[]): void {
+  const createTempIds = new Set(
+    queued.filter((op) => isCustomerCreateOp(op)).map((op) => String(op.body?.tempId || ""))
+  );
+  const seen = new Set<string>();
+  for (const op of queued) {
+    const cid = op.body?.customerId;
+    if (!isTempId(cid) || seen.has(cid)) continue;
+    seen.add(cid);
+    if (resolvePendingCustomer(cid)) continue; // mapping hai — sab theek
+    if (createTempIds.has(cid)) continue; // create op queue me hai — wo id dega
+    const pc = getPendingCustomers().find((p) => p.tempId === cid);
+    if (!pc?.phone || !pc?.name) continue; // data hi nahi — banner me dikhega
+    if (Date.now() - (pc.timestamp || 0) < 45000) continue; // abhi haal hi me bana — ruko
+    if (pc.healedAt && Date.now() - pc.healedAt < 600000) continue; // 10 min me ek baar max
+    const added = addPendingOp({
+      id: `heal_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      method: "POST",
+      url: "/api/customers",
+      body: { name: pc.name, phone: pc.phone, address: pc.address, tempId: pc.tempId },
+      timestamp: Date.now(),
+    });
+    if (added) markPendingCustomerHealed(cid);
+  }
 }
 
 export function useSyncPending() {
@@ -110,14 +154,19 @@ export function useSyncPending() {
       const recovered = await probeNetwork(true);
       if (!recovered) return;
     }
-    const queued = getPendingOps();
+    let queued = getPendingOps();
     if (queued.length === 0) {
       if (opts?.refresh) dispatchRefresh(0);
       return;
     }
-    // Backoff me jo op abhi server reject ho rahe hain unhe agli round chhod do —
+    // Pehle orphan entries theek karo — warna wo kabhi sync hi nahi hongi
+    healOrphanedEntries(queued);
+    queued = getPendingOps();
+    // Permanent reject (4xx) aur backoff wale op agli round chhod do —
     // ek kharaab op baaki queue ko har round me rukne nahi dega
-    const eligible = queued.filter((op) => !op.nextAttemptAt || Date.now() >= op.nextAttemptAt);
+    const eligible = queued.filter(
+      (op) => !op.permanent && (!op.nextAttemptAt || Date.now() >= op.nextAttemptAt)
+    );
     // Order: khata (customer create) PEHLE, phir entries — taki temp id remap
     // usi round me ho jaye, entry ko agle round ka intzaar na karna pade
     const creates = eligible.filter((op) => isCustomerCreateOp(op));
@@ -146,7 +195,9 @@ export function useSyncPending() {
                   markPendingCustomerSynced(String(op.body.tempId), Number(result.data.id));
                 }
               } else {
-                markFailed(op, result.status);
+                const msg =
+                  result.data && typeof result.data.error === "string" ? result.data.error : "";
+                markFailed(op, result.status, msg);
               }
             } catch {}
           })

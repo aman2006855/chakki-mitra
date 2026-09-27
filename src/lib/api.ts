@@ -49,9 +49,20 @@ function json(data: any, status = 200, headers: Record<string, string> = {}): Re
 const API_TIMEOUT_MS = 20000; // UI 5-6 min latka nahi rahega — max 20s me decision
 
 function queueWrite(opId: string, method: string, url: string, body: any): Response {
+  let saved = false;
   try {
-    addPendingOp({ id: opId, method, url, body, timestamp: Date.now() });
-  } catch {}
+    saved = addPendingOp({ id: opId, method, url, body, timestamp: Date.now() });
+  } catch {
+    saved = false;
+  }
+  // Storage full + cache eviction se bhi na bacha → JHOOTH mat bolo (fake success),
+  // warna user sochega save ho gaya aur entry chup-chaap gayab ho jayegi
+  if (!saved) {
+    return json(
+      { success: false, offline: false, error: "Phone ki storage full hai — entry save nahi hui" },
+      507
+    );
+  }
   // Sync ko turant batao (wo 1.2s baad drain chalayega — pehle 15s intezaar tha)
   try {
     window.dispatchEvent(new CustomEvent("cm:queue-write"));

@@ -1,24 +1,36 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { WifiOff, Send } from "lucide-react";
-import { isOnline, onOnlineChange, getPendingOps, getPendingSms, removePendingSms, getOfflineReason } from "@/lib/offline-db";
+import { WifiOff, Send, RotateCw, AlertTriangle } from "lucide-react";
+import {
+  isOnline,
+  onOnlineChange,
+  getPendingOpsSummary,
+  forceRetryAllPendingOps,
+  getPendingSms,
+  removePendingSms,
+  getOfflineReason,
+} from "@/lib/offline-db";
 import { isNativePlatform } from "@/lib/capacitor";
 import BackgroundSms from "@/plugins/background-sms";
 
+type Summary = { total: number; stuck: number; rejected: number; orphan: number; lastError: string | null };
+
 // Offline banner — net jaate hi dikhe: phone ka save data chal raha hai.
 // + Pending SMS ek-tap resend (offline entry ka chhoota SMS).
+// + SACH dikhata hai: sync asli me ho raha hai ya atak gaya (stuck par Retry).
 export default function OfflineBanner() {
   const [online, setOnline] = useState(true);
   const [reason, setReason] = useState<string | null>(null);
-  const [pending, setPending] = useState(0);
+  const [summary, setSummary] = useState<Summary>({ total: 0, stuck: 0, rejected: 0, orphan: 0, lastError: null });
   const [pendingSms, setPendingSms] = useState(0);
   const [sendingSms, setSendingSms] = useState(false);
   const [smsMsg, setSmsMsg] = useState("");
+  const [retryMsg, setRetryMsg] = useState("");
 
   function refreshCounts() {
     try {
-      setPending(getPendingOps().length);
+      setSummary(getPendingOpsSummary());
       setPendingSms(getPendingSms().length);
       setReason(getOfflineReason());
     } catch {}
@@ -63,7 +75,19 @@ export default function OfflineBanner() {
     setTimeout(() => setSmsMsg(""), 5000);
   }
 
-  if (online && pending === 0 && pendingSms === 0 && !smsMsg) return null;
+  // Permanent reject/backoff hatao + sync foran chalu (orphan heal bhi isi me hota hai)
+  function retryStuck() {
+    try {
+      forceRetryAllPendingOps();
+      window.dispatchEvent(new CustomEvent("cm:queue-write"));
+      setRetryMsg("🔄 Dobara bhej rahe hain...");
+      setTimeout(() => setRetryMsg(""), 4000);
+    } catch {}
+    refreshCounts();
+  }
+
+  const { total, stuck, rejected, orphan, lastError } = summary;
+  if (online && total === 0 && pendingSms === 0 && !smsMsg && !retryMsg) return null;
 
   // Offline ka asli wajah dikhao — "net chalu hai par server tak nahi" aur
   // "internet hi band hai" dono same nahi hote
@@ -72,21 +96,44 @@ export default function OfflineBanner() {
     ? "📴 Offline — internet band hai"
     : "⚠️ Net chalu hai, par server tak nahi pahunch rahe — entries queue me save hain";
 
+  // Stuck ka karan user ko dikhao (isise hume bhi pata chalta hai kya atka hai)
+  const stuckReason =
+    rejected > 0
+      ? lastError
+        ? `server ne mana kiya: ${lastError}`
+        : "server reject"
+      : "khate (temp id) ka sync ruka";
+  const stuckStyle = rejected > 0 ? "bg-amber-700 text-white" : "bg-amber-500 text-white";
+
   return (
     <div
       className={`px-4 py-1.5 flex items-center justify-center gap-1.5 text-[11px] font-semibold flex-wrap ${
-        online ? "bg-green-600 text-white" : noInternet ? "bg-gray-800 text-gray-100" : "bg-amber-600 text-white"
+        online ? (stuck > 0 ? stuckStyle : "bg-green-600 text-white") : noInternet ? "bg-gray-800 text-gray-100" : "bg-amber-600 text-white"
       }`}
     >
       {!online && <WifiOff className="w-3 h-3 shrink-0" />}
       {!online ? (
         <span>
           {offlineText}
-          {pending > 0 ? ` · ⏳${pending} sync baaki` : ""}
+          {total > 0 ? ` · ⏳${total} sync baaki` : ""}
         </span>
-      ) : pending > 0 ? (
-        <span>✅ Net wapas! ⏳{pending} sync ho raha hai...</span>
+      ) : stuck > 0 ? (
+        <span className="flex items-center gap-1 flex-wrap justify-center">
+          <AlertTriangle className="w-3 h-3 shrink-0" />
+          {stuck} entry ruki — {stuckReason}
+          <button
+            type="button"
+            onClick={retryStuck}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/25 active:bg-white/40"
+          >
+            <RotateCw className="w-3 h-3" />
+            Retry
+          </button>
+        </span>
+      ) : total > 0 ? (
+        <span>✅ Net wapas! ⏳{total} sync ho raha hai...</span>
       ) : null}
+      {retryMsg && <span>{retryMsg}</span>}
       {pendingSms > 0 && (
         <button
           type="button"
