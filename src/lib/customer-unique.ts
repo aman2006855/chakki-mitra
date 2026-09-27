@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { sql } from "drizzle-orm";
+import { ensureAppSchema } from "./ensure-schema";
 
 // DUPLICATE KHATA = ZERO guarantee.
 // 1) phone_norm backfill (JS normalizePhone ka SQL equivalent)
@@ -73,6 +74,9 @@ async function needsWork(): Promise<boolean> {
 }
 
 async function run(): Promise<void> {
+  // Column hi na ho to neeche ke saare queries 42703 me fail hote the —
+  // pehle column + table pakka karo, phir backfill/merge/index
+  await ensureAppSchema();
   // Aam taur par: kuch nahi — sirf index confirm (no-op).
   if (!(await needsWork())) {
     try {

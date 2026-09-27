@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { idempotencyKeys } from "@/db/schema";
 import { eq, and, lt } from "drizzle-orm";
+import { ensureAppSchema } from "./ensure-schema";
 
 const KEY_TTL = 7 * 24 * 60 * 60 * 1000; // 7 din — purani keys auto-safai
 const SWEEP_MS = 60 * 60 * 1000; // safai ghante me ek baar (har write par nahi)
@@ -13,6 +14,8 @@ export async function claimIdempotencyKey(
   userId: number
 ): Promise<{ duplicate: boolean; response: any | null }> {
   try {
+    // Table hi na ho to claim fail-open me girta tha (42P01) — pehle schema pakka karo
+    await ensureAppSchema();
     // Opportunistic safai — pehle HAR write par ek DELETE (scan) chalta tha =
     // entry sync me extra DB roundtrip + badhta table hone par dheerta.
     // Ab ghante me ek baar aur bina await (fire-and-forget).

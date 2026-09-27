@@ -66,6 +66,9 @@ All notable changes to this project are documented here. Format follows Keep a C
 - **Sab localStorage writes ab `safeSetItem` se:** full hone par sirf cache (dikhawa data) hata kar jagah banti hai — queue/khata/SMS kabhi nahi. Sab fail ho to `storageFull` flag → banner/Settings batayenge `phone storage full hai`.
 - **Backoff bhi ab stuck me gina jata hai** (pehle green jhooth dikhta tha) + server 5xx/429 lagatar 5 fail = permanent reject (Retry se wapas). Settings sync row me `HTTP status · N try` detail.
 
+- **Stuck-1 ka ASLI root cause mila (Supabase logs se): `COLUMN "PHONE_NORM" DOES NOT EXIST` (42703).** drizzle-kit push build me chalta hai par prod DB tak apply nahi hota tha — isliye: `ensureCustomerUnique()` ke saare queries 42703 me fail (fail-open, chup-chaap) → customer insert 42703 → `findByPhone` ka `SELECT *` bhi 42703 → **500 `Khata save nahi ho paya`, har retry me**. Saath me `idempotency_keys` table bhi missing thi (DDL sirf admin routes par chalta tha) → har write par 42P01 + dedupe protection dead.
+- **Runtime schema self-heal (`ensureAppSchema`):** har cold start me ek baar `ALTER TABLE customers ADD COLUMN IF NOT EXISTS phone_norm` + `CREATE TABLE IF NOT EXISTS idempotency_keys` (cached, no-op uske baad). `claimIdempotencyKey` + `ensureCustomerUnique` dono isko pehle chalate hain. Deploy ke baad Supabase logs me 42703/42P01 band + atka badge khud clear. APK update ki zaroorat nahi (server-only fix).
+
 ## [1.0.24] - 2026-09-21
 
 ### Added
