@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Wheat, LogOut, Wifi, WifiOff, Headphones } from "lucide-react";
+import { Wheat, LogOut, Wifi, WifiOff, Headphones, RefreshCw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { isOnline, onOnlineChange, getPendingOps, getOfflineReason, requestManualSync } from "@/lib/offline-db";
 import { api } from "@/lib/api";
@@ -86,6 +86,16 @@ export default function Header({ shopName, onSupportClick }: HeaderProps) {
                   ⏳{pendingCount}
                 </span>
               )}
+            </button>
+            {/* Manual Sync — hamesha dikhne wala button (chip tappable hai par dikhta nahi) */}
+            <button
+              type="button"
+              onClick={() => requestManualSync()}
+              className="p-1.5 rounded-lg hover:bg-white/10 active:bg-white/20 active:rotate-90 transition-transform"
+              title="Abhi sync karo"
+              aria-label="Abhi sync karo"
+            >
+              <RefreshCw className="w-4 h-4 text-orange-100" />
             </button>
             <button
               type="button"

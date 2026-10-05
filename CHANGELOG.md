@@ -74,6 +74,8 @@ All notable changes to this project are documented here. Format follows Keep a C
 - **Admin DB health ab EXACT:** naya `/api/admin/health` (admin-auth) — live measured reachability + query latency (ms) + server time + Postgres version + DB size + har table ki row count (missing table = ERR, chhupata nahi). Overview me `DbHealth` widget: status dot, 30s auto-refresh, manual Refresh. Purana static `OK/Unknown` hata diya.
 - **Website par APK download button:** login page (public) par `📲 APK Download Karo (Android)` — hamesha latest release (`releases/latest/download/app-release.apk`). Installed app ke andar button chhupa rehta hai (wahan bekaar hai).
 
+- **Sync button ab saaf dikhta hai:** header me naya `🔄` icon-button (🎧 ke paas, hamesha visible) — dabate hi probe + queue drain. Pehle sirf Online chip tappable tha jo dikhta nahi tha; chip ab bhi tappable hai + banner/Settings wale buttons jaise the waise hain.
+
 ## [1.0.24] - 2026-09-21
 
 ### Added
