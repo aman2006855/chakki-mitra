@@ -76,6 +76,8 @@ All notable changes to this project are documented here. Format follows Keep a C
 
 - **Sync button ab saaf dikhta hai:** header me naya `🔄` icon-button (🎧 ke paas, hamesha visible) — dabate hi probe + queue drain. Pehle sirf Online chip tappable tha jo dikhta nahi tha; chip ab bhi tappable hai + banner/Settings wale buttons jaise the waise hain.
 
+- **Sync button ab proof ke saath:** har manual tap turant `cm:manual-sync` se chalta hai (bina 1.2s debounce), lists fresh hoti hain, aur banner me result dikhta hai — `✅ N entry sync ho gayi!` / `✅ Sab sync hai` / `⏳ N bheji · M baaki` / `📴 Offline ho`. Khaali queue par tap karne par pehle kuch dikhta hi nahi tha (isliye nakli lagta tha) — ab har tap ka hisaab milta hai.
+
 ## [1.0.24] - 2026-09-21
 
 ### Added

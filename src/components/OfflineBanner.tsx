@@ -34,6 +34,7 @@ export default function OfflineBanner() {
   const [sendingSms, setSendingSms] = useState(false);
   const [smsMsg, setSmsMsg] = useState("");
   const [retryMsg, setRetryMsg] = useState("");
+  const [resultMsg, setResultMsg] = useState("");
 
   function refreshCounts() {
     try {
@@ -50,8 +51,31 @@ export default function OfflineBanner() {
       setOnline(o);
       refreshCounts();
     });
+    // Manual Sync tap ka result — har tap ka hisaab banner me dikhega
+    const onSyncResult = (e: Event) => {
+      try {
+        const d = ((e as CustomEvent).detail || {}) as {
+          synced?: number;
+          pending?: number;
+          offline?: boolean;
+        };
+        const synced = d.synced || 0;
+        const pending = d.pending || 0;
+        if (d.offline) setResultMsg("📴 Offline ho — net aane par auto-sync hoga");
+        else if (pending === 0)
+          setResultMsg(synced > 0 ? `✅ ${synced} entry sync ho gayi!` : "✅ Sab sync hai — kuch baaki nahi");
+        else setResultMsg(`⏳ ${synced} bheji · ${pending} baaki — auto-sync chal raha`);
+        setTimeout(() => setResultMsg(""), 4000);
+      } catch {}
+      refreshCounts();
+    };
+    window.addEventListener("cm:sync-result", onSyncResult);
     const t = setInterval(refreshCounts, 3000);
-    return () => { unsub(); clearInterval(t); };
+    return () => {
+      unsub();
+      clearInterval(t);
+      window.removeEventListener("cm:sync-result", onSyncResult);
+    };
   }, []);
 
   async function sendPendingSms() {
@@ -104,7 +128,7 @@ export default function OfflineBanner() {
   }
 
   const { total, stuck, rejected, orphan, lastError, maxAttempts, storageFull } = summary;
-  if (online && total === 0 && pendingSms === 0 && !smsMsg && !retryMsg) return null;
+  if (online && total === 0 && pendingSms === 0 && !smsMsg && !retryMsg && !resultMsg) return null;
 
   // Offline ka asli wajah dikhao — "net chalu hai par server tak nahi" aur
   // "internet hi band hai" dono same nahi hote
@@ -163,6 +187,7 @@ export default function OfflineBanner() {
         </span>
       ) : null}
       {retryMsg && <span>{retryMsg}</span>}
+      {resultMsg && <span>{resultMsg}</span>}
       {pendingSms > 0 && (
         <button
           type="button"

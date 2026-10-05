@@ -43,6 +43,13 @@ function dispatchRefresh(count: number): void {
   } catch {}
 }
 
+// Manual Sync tap ka proof — banner dikhayega kya hua (kitni gayi, kitni baaki, offline?)
+function dispatchManualResult(detail: { synced: number; pending: number; offline: boolean }): void {
+  try {
+    window.dispatchEvent(new CustomEvent("cm:sync-result", { detail }));
+  } catch {}
+}
+
 function isCustomerCreateOp(op: { method: string; url: string }): boolean {
   return op.method === "POST" && op.url.replace(/\?.*$/, "") === "/api/customers";
 }
@@ -150,13 +157,16 @@ function healOrphanedEntries(queued: PendingOp[]): void {
 export function useSyncPending() {
   const syncingRef = useRef(false);
 
-  const syncAll = async (opts?: { refresh?: boolean }) => {
+  const syncAll = async (opts?: { refresh?: boolean; manual?: boolean }) => {
     if (syncingRef.current) return;
     // State "offline" lag rahi hai par ops pending hain — pehle probe karo,
     // net chalu ho to state sudhar kar sync chalu (deadlock fix)
     if (!isOnline()) {
       const recovered = await probeNetwork(true);
-      if (!recovered) return;
+      if (!recovered) {
+        if (opts?.manual) dispatchManualResult({ synced: 0, pending: getPendingOps().length, offline: true });
+        return;
+      }
     }
     // Sabse pehle queue se dead op hatao (jo server par kabhi nahi chal
     // sakte — badge ko hamesha-⏳ banate the), phir orphan heal karo
@@ -220,6 +230,8 @@ export function useSyncPending() {
     }
     // Lists turant fresh dikhe — KhataBook jaisi screens sunengi
     if (synced > 0 || opts?.refresh) dispatchRefresh(synced);
+    // Manual tap tha to result banner ko batao (proof: nakli button nahi hai)
+    if (opts?.manual) dispatchManualResult({ synced, pending: getPendingOps().length, offline: false });
   };
 
   useEffect(() => {
@@ -245,6 +257,13 @@ export function useSyncPending() {
     };
     window.addEventListener("cm:queue-write", onQueueWrite);
 
+    // User ne haath se Sync dabaya — turant (bina debounce), lists bhi fresh,
+    // aur result banner me (har tap ka hisaab milega)
+    const onManualSync = () => {
+      syncAll({ refresh: true, manual: true });
+    };
+    window.addEventListener("cm:manual-sync", onManualSync);
+
     // Time-to-time sync (offline storage ↔ online database)
     const flushTimer = setInterval(() => {
       if (getPendingOps().length > 0) syncAll();
@@ -267,6 +286,7 @@ export function useSyncPending() {
       unsub();
       if (writeTimer) clearTimeout(writeTimer);
       window.removeEventListener("cm:queue-write", onQueueWrite);
+      window.removeEventListener("cm:manual-sync", onManualSync);
       clearInterval(flushTimer);
       clearInterval(refreshTimer);
       window.removeEventListener("focus", onWake);

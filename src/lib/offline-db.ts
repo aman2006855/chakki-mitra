@@ -534,13 +534,13 @@ export function requestNetworkProbe(): void {
 
 /**
  * User ne haath se Sync dabaya — heartbeat probe + turant queue drain.
- * (Drain hook me 1.2s debounce ke saath chalta hai — cm:queue-write sunta hai.)
+ * (cm:manual-sync turant chalta hai; 1.2s debounce sirf auto queue-write par.)
  */
 export function requestManualSync(): void {
   if (typeof window === "undefined") return;
   try {
     requestNetworkProbe();
-    window.dispatchEvent(new CustomEvent("cm:queue-write"));
+    window.dispatchEvent(new CustomEvent("cm:manual-sync"));
   } catch {}
 }
 
