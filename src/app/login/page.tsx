@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { isNativePlatform } from "@/lib/capacitor";
 import { sendOTP } from "@/lib/edge";
 import AutoUpdater from "@/components/AutoUpdater";
 
@@ -488,6 +489,22 @@ export default function LoginPage() {
           </>
           )}
         </div>
+
+        {/* Website visitors ke liye APK download — hamesha latest release.
+            Native app ke andar chhupao (wahan iska koi matlab nahi). */}
+        {!isNativePlatform() && (
+          <>
+            <a
+              href="https://github.com/aman2006855/chakki-mitra/releases/latest/download/app-release.apk"
+              className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-green-600 text-white font-bold active:bg-green-700 shadow-md"
+            >
+              📲 APK Download Karo (Android)
+            </a>
+            <p className="text-center text-[11px] text-orange-200/80 mt-1">
+              Hamesha naya version — seedha GitHub se
+            </p>
+          </>
+        )}
 
         <div className="mt-6 grid grid-cols-3 gap-3">
           <div className="text-center">

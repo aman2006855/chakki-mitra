@@ -1,0 +1,25 @@
+name: Keep Alive (Supabase + Vercel warm)
+
+# Supabase free tier ~7 din idle par pause ho jata hai — har 10 min me ek
+# asli DB query (select 1) + edge ping, taaki project active rahe AUR
+# Vercel cold start kam ho (sync tez lage). curl -f fail hoga agar server
+# down hai → run red = free monitoring.
+# NOTE: GitHub 60 din repo-inactive par schedule band kar deta hai — repo
+# active hai to chalta rahega. Manual run: Actions → Keep Alive → Run workflow.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: DB keep-alive (select 1 via /api/health)
+        run: |
+          curl -fsS -m 30 --retry 2 --retry-delay 5 "https://chakki-mitra.vercel.app/api/health" | head -c 300
+          echo
+      - name: Edge keep-alive (/api/ping)
+        run: |
+          curl -fsS -m 30 --retry 2 --retry-delay 5 -o /dev/null -w "ping %{http_code} %{time_total}s\n" "https://chakki-mitra.vercel.app/api/ping"

@@ -25,8 +25,122 @@ function Stat({
   );
 }
 
-export function OverviewSection({ refreshTick }: { refreshTick: number }) {
-  const [data, setData] = useState<any>(null);
+// EXACT database health — /api/admin/health se live measured (reachability +
+// latency + size + version + har table ki row count), har 30s auto-refresh.
+// Koi static "OK" nahi — jo dikhta hai wahi measured hai.
+function DbHealth() {
+  const [h, setH] = useState<any>(null);
+  const [failed, setFailed] = useState(false);
+  const [checking, setChecking] = useState(false);
+
+  const fetchHealth = async () => {
+    setChecking(true);
+    try {
+      const d = await adminGet("/api/admin/health");
+      setH(d);
+      setFailed(false);
+    } catch {
+      setFailed(true);
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHealth();
+    const t = setInterval(fetchHealth, 30000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!h && !failed) {
+    return (
+      <div className="flex justify-between">
+        <span>DB health</span>
+        <span className="text-gray-400">check ho raha...</span>
+      </div>
+    );
+  }
+
+  if (failed || !h) {
+    return (
+      <div className="flex justify-between items-center">
+        <span>DB health</span>
+        <button
+          type="button"
+          onClick={fetchHealth}
+          className="text-red-600 font-medium text-xs"
+        >
+          ❌ Load fail — Retry
+        </button>
+      </div>
+    );
+  }
+
+  const live = h.ok === true && h.reachable === true;
+  const tableEntries: [string, any][] = h.tables ? Object.entries(h.tables) : [];
+  const secsAgo = h.checkedAt
+    ? Math.max(0, Math.round((Date.now() - new Date(h.checkedAt).getTime()) / 1000))
+    : -1;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex justify-between items-center">
+        <span className="flex items-center gap-1.5">
+          <span className={`w-2 h-2 rounded-full ${live ? "bg-green-500" : "bg-red-500"}`} />
+          DB health
+        </span>
+        <button
+          type="button"
+          onClick={fetchHealth}
+          disabled={checking}
+          className="text-orange-600 font-medium text-xs disabled:opacity-40"
+        >
+          {checking ? "..." : "🔄 Refresh"}
+        </button>
+      </div>
+      {live ? (
+        <>
+          <div className="flex justify-between">
+            <span className="text-gray-400">Status</span>
+            <span className="text-green-600 font-medium">● Connected · {h.latencyMs}ms</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-400">Database size</span>
+            <span>{h.dbSize || "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-400">Postgres</span>
+            <span>{h.version || "—"}</span>
+          </div>
+          {tableEntries.length > 0 && (
+            <div className="grid grid-cols-2 gap-x-4 pt-1 border-t border-gray-100">
+              {tableEntries.map(([name, n]) => (
+                <div key={name} className="flex justify-between py-0.5">
+                  <span className="text-gray-400 font-mono">{name}</span>
+                  <span className={n === -1 ? "text-red-600 font-medium" : ""}>
+                    {n === -1 ? "ERR" : Number(n).toLocaleString("en-IN")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex justify-between text-gray-400">
+            <span>Checked</span>
+            <span>{secsAgo < 0 ? "—" : secsAgo < 5 ? "abhi" : `${secsAgo}s pehle`}</span>
+          </div>
+        </>
+      ) : (
+        <div className="flex justify-between">
+          <span className="text-gray-400">Status</span>
+          <span className="text-red-600 font-medium">❌ Down{h.error ? `: ${h.error}` : ""}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function OverviewSection({ refreshTick }: { refreshTick: number }) {  const [data, setData] = useState<any>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -102,12 +216,7 @@ export function OverviewSection({ refreshTick }: { refreshTick: number }) {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 p-4 text-xs text-gray-600 space-y-1.5">
-        <div className="flex justify-between">
-          <span>DB health</span>
-          <span className={ops.dbHealthy ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
-            {ops.dbHealthy ? "OK" : "Unknown"}
-          </span>
-        </div>
+        <DbHealth />
         <div className="flex justify-between">
           <span>Active plans</span>
           <span>{ops.activePlans}</span>

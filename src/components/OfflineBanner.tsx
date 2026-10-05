@@ -7,6 +7,7 @@ import {
   onOnlineChange,
   getPendingOpsSummary,
   forceRetryAllPendingOps,
+  requestManualSync,
   getPendingSms,
   removePendingSms,
   getOfflineReason,
@@ -81,6 +82,16 @@ export default function OfflineBanner() {
     setTimeout(() => setSmsMsg(""), 5000);
   }
 
+  // Manual Sync button — user ke haath me: dabate hi probe + queue drain
+  function manualSync() {
+    try {
+      requestManualSync();
+      setRetryMsg("🔄 Sync chalu...");
+      setTimeout(() => setRetryMsg(""), 2500);
+    } catch {}
+    refreshCounts();
+  }
+
   // Permanent reject/backoff hatao + sync foran chalu (orphan heal bhi isi me hota hai)
   function retryStuck() {
     try {
@@ -140,7 +151,16 @@ export default function OfflineBanner() {
           </button>
         </span>
       ) : total > 0 ? (
-        <span>✅ Net wapas! ⏳{total} sync ho raha hai...</span>
+        <span className="flex items-center gap-1 flex-wrap justify-center">
+          ✅ Net wapas! ⏳{total} sync ho raha hai...
+          <button
+            type="button"
+            onClick={manualSync}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/20 active:bg-white/40"
+          >
+            🔄 Sync
+          </button>
+        </span>
       ) : null}
       {retryMsg && <span>{retryMsg}</span>}
       {pendingSms > 0 && (

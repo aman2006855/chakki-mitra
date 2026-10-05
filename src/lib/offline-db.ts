@@ -533,6 +533,18 @@ export function requestNetworkProbe(): void {
 }
 
 /**
+ * User ne haath se Sync dabaya — heartbeat probe + turant queue drain.
+ * (Drain hook me 1.2s debounce ke saath chalta hai — cm:queue-write sunta hai.)
+ */
+export function requestManualSync(): void {
+  if (typeof window === "undefined") return;
+  try {
+    requestNetworkProbe();
+    window.dispatchEvent(new CustomEvent("cm:queue-write"));
+  } catch {}
+}
+
+/**
  * Heartbeat start karo — module load par ek hi baar chale.
  * Online = har 45s check, offline/suspect = har 4s try.
  */

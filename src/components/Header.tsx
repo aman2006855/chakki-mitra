@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Wheat, LogOut, Wifi, WifiOff, Headphones } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { isOnline, onOnlineChange, getPendingOps, getOfflineReason } from "@/lib/offline-db";
+import { isOnline, onOnlineChange, getPendingOps, getOfflineReason, requestManualSync } from "@/lib/offline-db";
 import { api } from "@/lib/api";
 
 interface HeaderProps {
@@ -65,16 +65,18 @@ export default function Header({ shopName, onSupportClick }: HeaderProps) {
             <h1 className="text-xl font-bold tracking-wide">चक्की मित्र</h1>
           </div>
           <div className="flex items-center gap-2">
-            <div
-              className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
+            <button
+              type="button"
+              onClick={() => requestManualSync()}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium cursor-pointer active:scale-95 transition-transform ${
                 online ? "bg-green-500/20 text-green-100" : reason === "server" ? "bg-amber-400/25 text-amber-100" : "bg-red-500/20 text-red-200"
               }`}
               title={
                 online
-                  ? "Connected"
+                  ? "Connected — tap karke abhi sync karo"
                   : reason === "server"
-                    ? "Internet chalu hai par server tak nahi pahunch pa rahe — entries queue me save hain"
-                    : "Internet band hai — entries phone me save hain"
+                    ? "Internet chalu hai par server tak nahi pahunch pa rahe — entries queue me save hain. Tap karke retry karo."
+                    : "Internet band hai — entries phone me save hain. Tap karke retry karo."
               }
             >
               {online ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
@@ -84,7 +86,7 @@ export default function Header({ shopName, onSupportClick }: HeaderProps) {
                   ⏳{pendingCount}
                 </span>
               )}
-            </div>
+            </button>
             <button
               type="button"
               onClick={onSupportClick}

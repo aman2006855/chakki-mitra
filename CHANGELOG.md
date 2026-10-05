@@ -69,6 +69,11 @@ All notable changes to this project are documented here. Format follows Keep a C
 - **Stuck-1 ka ASLI root cause mila (Supabase logs se): `COLUMN "PHONE_NORM" DOES NOT EXIST` (42703).** drizzle-kit push build me chalta hai par prod DB tak apply nahi hota tha — isliye: `ensureCustomerUnique()` ke saare queries 42703 me fail (fail-open, chup-chaap) → customer insert 42703 → `findByPhone` ka `SELECT *` bhi 42703 → **500 `Khata save nahi ho paya`, har retry me**. Saath me `idempotency_keys` table bhi missing thi (DDL sirf admin routes par chalta tha) → har write par 42P01 + dedupe protection dead.
 - **Runtime schema self-heal (`ensureAppSchema`):** har cold start me ek baar `ALTER TABLE customers ADD COLUMN IF NOT EXISTS phone_norm` + `CREATE TABLE IF NOT EXISTS idempotency_keys` (cached, no-op uske baad). `claimIdempotencyKey` + `ensureCustomerUnique` dono isko pehle chalate hain. Deploy ke baad Supabase logs me 42703/42P01 band + atka badge khud clear. APK update ki zaroorat nahi (server-only fix).
 
+- **Supabase keep-alive (free tier sleep fix):** naya GitHub Actions cron `Keep Alive` — har 10 min me `/api/health` (asli DB `select 1`) + `/api/ping`. Free tier ~7 din idle par pause hota hai, ab active rahega + Vercel cold start bhi kam (sync tez lagega). Server down hua to run red = free monitoring. Manual run: Actions → Keep Alive → Run workflow.
+- **Manual Sync button:** header ka Online/Offline chip ab button hai — tap karte hi probe + queue drain. Banner me bhi `🔄 Sync` button (green `sync ho raha` wali line me). Dono `requestManualSync()` use karte hain, koi prop-drilling nahi.
+- **Admin DB health ab EXACT:** naya `/api/admin/health` (admin-auth) — live measured reachability + query latency (ms) + server time + Postgres version + DB size + har table ki row count (missing table = ERR, chhupata nahi). Overview me `DbHealth` widget: status dot, 30s auto-refresh, manual Refresh. Purana static `OK/Unknown` hata diya.
+- **Website par APK download button:** login page (public) par `📲 APK Download Karo (Android)` — hamesha latest release (`releases/latest/download/app-release.apk`). Installed app ke andar button chhupa rehta hai (wahan bekaar hai).
+
 ## [1.0.24] - 2026-09-21
 
 ### Added
