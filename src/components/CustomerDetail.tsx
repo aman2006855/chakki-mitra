@@ -109,6 +109,10 @@ export default function CustomerDetail({
 
   useEffect(() => {
     fetchDetail();
+    // Sync complete hote hi fresh data — warna jama/entry tab switch tak purani dikhti thi
+    const onSync = () => fetchDetail();
+    window.addEventListener("cm:sync-done", onSync);
+    return () => window.removeEventListener("cm:sync-done", onSync);
   }, [customer.id]);
 
   const fetchDetail = async () => {
@@ -128,17 +132,25 @@ export default function CustomerDetail({
   };
 
   const recalcSummary = (txns: Transaction[], pays: any[]) => {
+    // Server (detail route) se EXACT match — warna har local update ke baad
+    // numbers jump karte the: billed = CREDIT udhaar only (cash turant settled
+    // hota hai, khate ka hissa nahi), advance me overpayment shamil.
     let totalBilled = 0;
-    txns.forEach((t) => { totalBilled += parseFloat(t.amount) || 0; });
+    txns.forEach((t) => {
+      if ((t as any).paymentMode === "credit") totalBilled += parseFloat(t.amount) || 0;
+    });
     let totalJama = 0;
-    let totalAdvance = 0;
+    let advRaw = 0;
     pays.forEach((p: any) => {
       const amt = parseFloat(p.amount) || 0;
-      if (p.type === "advance") totalAdvance += amt;
+      if (p.type === "advance") advRaw += amt;
       else totalJama += amt;
     });
-    const pendingDues = Math.max(0, totalBilled - totalJama);
-    setSummary({ totalBilled, totalJama, pendingDues, totalAdvance, netBalance: totalBilled - totalJama - totalAdvance });
+    const rawDues = totalBilled - totalJama;
+    const overpaymentCredit = Math.max(0, totalJama - totalBilled);
+    const pendingDues = Math.max(0, rawDues);
+    const totalAdvance = advRaw + overpaymentCredit;
+    setSummary({ totalBilled, totalJama, pendingDues, totalAdvance, netBalance: totalBilled - totalJama - advRaw });
   };
 
   const paymentSavingRef = useRef(false);
@@ -158,11 +170,19 @@ export default function CustomerDetail({
         }),
       });
       if (res.ok) {
-        const newPayment = await res.json();
-        const updatedPayments = [newPayment, ...payments];
-        setPayments(updatedPayments);
-        recalcSummary(transactions, updatedPayments);
-        showToast({ type: "success", text: "✅ जमा हो गई!" });
+        const savedBody = await res.json().catch(() => ({} as any));
+        if ((savedBody as any)?.offline) {
+          // Offline queue — fake response me asli payment row NAHI hoti.
+          // Pehle yahi object prepend ho jata tha → blank label + ₹NaN wali row.
+          // Ab kuch prepend mat karo; sync-done refetch asli row layega.
+          showToast({ type: "success", text: "✅ Save ho gaya (offline) — net aane par sync hoga ⏳" });
+        } else {
+          const newPayment = savedBody;
+          const updatedPayments = [newPayment, ...payments];
+          setPayments(updatedPayments);
+          recalcSummary(transactions, updatedPayments);
+          showToast({ type: "success", text: "✅ जमा हो गई!" });
+        }
         setShowPaymentModal(false);
         setPaymentAmount("");
         setPaymentDesc("");
@@ -229,7 +249,7 @@ export default function CustomerDetail({
       `🛒 कुल पिसाई: ${txCount} बार\n` +
       `💰 कुल बिल: *${formatCurrency(summary.totalBilled)}*\n` +
       `✅ जमा किया: ${formatCurrency(summary.totalJama)}\n` +
-      `⏳ बकाया राशि: *${formatCurrency(summary.pendingDues)}*\n` +
+      `⏳ बकाया राशि: *${formatCurrency(summary.netBalance)}*\n` +
       (summary.totalAdvance > 0 ? `🟢 एडवांस: ${formatCurrency(summary.totalAdvance)}\n` : '') +
       `━━━━━━━━━━━━━━━━\n\n` +
       (recentTx ? `📝 *हाल की पिसाई:*\n${recentTx}\n\n` : '') +
@@ -244,7 +264,9 @@ export default function CustomerDetail({
     const now = new Date();
     const dateStr = now.toLocaleDateString("hi-IN", { day: "numeric", month: "long", year: "numeric" });
 
-    let txLines = transactions.map((t, i) => {
+    let txLines = transactions
+      .filter((t) => (t as any).paymentMode === "credit")
+      .map((t, i) => {
       const date = formatDate(txDate(t));
       return `${i + 1}. ${date} — ${getProductLabel(t.productType)} ${parseFloat(t.weight).toFixed(0)}kg × ${formatCurrency(parseFloat(t.rate))} = *${formatCurrency(parseFloat(t.amount))}* (${t.paymentMode === "cash" ? "नगद" : "उधारी"})`;
     }).join("\n");
@@ -273,7 +295,7 @@ export default function CustomerDetail({
       `💰 कुल बिल: *${formatCurrency(summary.totalBilled)}*\n` +
       `✅ कुल जमा: *${formatCurrency(summary.totalJama)}*\n` +
       (summary.totalAdvance > 0 ? `🟢 एडवांस: *${formatCurrency(summary.totalAdvance)}*\n` : '') +
-      `⏳ *बकाया: ${formatCurrency(summary.pendingDues)}*\n` +
+      `⏳ *बकाया: ${formatCurrency(summary.netBalance)}*\n` +
       `━━━━━━━━━━━━━━━━\n\n` +
       `🙏 ${shopName}\n` +
       `📞 ${customer.phone}`
@@ -538,10 +560,12 @@ export default function CustomerDetail({
                 <span>विवरण</span>
                 <span>राशि</span>
               </div>
-              {transactions.map((t, i) => (
+              {transactions
+                .filter((t) => (t as any).paymentMode === "credit")
+                .map((t, i) => (
                 <div key={t.id} className="flex justify-between text-sm px-1">
                   <span className="text-gray-700">
-                    {i + 1}. {getProductLabel(t.productType)} - {parseFloat(t.weight).toFixed(1)} किग्रा
+                    {i + 1}. {getProductLabel(t.productType)} - {parseFloat(t.weight).toFixed(1)} किग्रा × ₹{parseFloat(t.rate).toFixed(0)}
                   </span>
                   <span className="text-gray-900 font-medium whitespace-nowrap ml-2">
                     {formatCurrency(parseFloat(t.amount))}
@@ -565,8 +589,8 @@ export default function CustomerDetail({
               </div>
               <div className="flex justify-between text-base pt-2 border-t border-gray-200">
                 <span className="font-bold">शेष बकाया</span>
-                <span className={`font-bold ${summary.pendingDues > 0 ? "text-red-600" : "text-green-600"}`}>
-                  {formatCurrency(summary.pendingDues)}
+                <span className={`font-bold ${summary.netBalance > 0 ? "text-red-600" : summary.netBalance < 0 ? "text-green-600" : "text-gray-600"}`}>
+                  {formatCurrency(summary.netBalance)}
                 </span>
               </div>
             </div>

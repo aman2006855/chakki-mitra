@@ -6,7 +6,7 @@ import AddCustomer from "./AddCustomer";
 import CustomerDetail from "./CustomerDetail";
 import { api } from "@/lib/api";
 import { createOrReuseCustomer } from "@/lib/customer-create";
-import { isTempId, removePendingCustomer, dropTempCustomerOps } from "@/lib/offline-db";
+import { isTempId, removePendingCustomer, dropTempCustomerOps, getPendingCustomers } from "@/lib/offline-db";
 
 interface CustomerWithDues {
   id: number;
@@ -58,11 +58,36 @@ export default function KhataBook({ onRefresh }: KhataBookProps) {
       if (res.ok) {
         const data = await res.json();
         setCustomerList(data);
+      } else {
+        showPendingOnly();
       }
     } catch {
-      // silent
+      // Offline + cache nahi — kam se kam pending (sync-baaki) khate to dikhao,
+      // warna naya offline khata list me aata hi nahi tha
+      showPendingOnly();
     }
     setLoading(false);
+  };
+
+  // Purani list mat udao — khaali ho tabhi pending dikhao
+  const showPendingOnly = () => {
+    try {
+      const pending = getPendingCustomers();
+      if (!pending.length) return;
+      setCustomerList((prev) => {
+        if (prev.length > 0) return prev;
+        return pending.map((p: any) => ({
+          id: p.realId ?? p.tempId,
+          name: p.name,
+          phone: p.phone,
+          address: p.address,
+          dues: 0,
+          advance: 0,
+          totalCredit: 0,
+          pendingSync: true,
+        }));
+      });
+    } catch {}
   };
 
   const filtered = customerList.filter(

@@ -77,6 +77,14 @@ export default function QuickEntry({
   useEffect(() => {
     fetchDashboard();
     fetchRecent();
+    // Sync complete hote hi dashboard fresh — offline entry sync hone par
+    // home ke numbers tab switch tak purane rehte the
+    const onSync = () => {
+      fetchDashboard();
+      fetchRecent();
+    };
+    window.addEventListener("cm:sync-done", onSync);
+    return () => window.removeEventListener("cm:sync-done", onSync);
   }, []);
 
   const fetchDashboard = async () => {

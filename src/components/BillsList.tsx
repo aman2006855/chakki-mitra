@@ -33,14 +33,30 @@ export default function BillsList({ customerId }: BillsListProps) {
   const [expandedBill, setExpandedBill] = useState<number | null>(null);
 
   useEffect(() => {
-    api(`/api/customers/bills?id=${customerId}`)
-      .then((r) => r.json())
-      .then((data) => {
-        setBills(data.bills || []);
-        setFinalBalance(data.finalBalance || 0);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    let cancelled = false;
+    // Pehli load par skeleton, sync-done refetch par silent (flash nahi)
+    const load = (initial: boolean) => {
+      if (initial) setLoading(true);
+      api(`/api/customers/bills?id=${customerId}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (cancelled) return;
+          setBills(data.bills || []);
+          setFinalBalance(data.finalBalance || 0);
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (!cancelled && initial) setLoading(false);
+        });
+    };
+    load(true);
+    // Jama/entry sync hote hi balances fresh — warna tab switch tak purane dikhte the
+    const onSync = () => load(false);
+    window.addEventListener("cm:sync-done", onSync);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("cm:sync-done", onSync);
+    };
   }, [customerId]);
 
   const formatCurrency = (n: number) => `₹${Math.abs(n).toFixed(0)}`;

@@ -78,6 +78,12 @@ All notable changes to this project are documented here. Format follows Keep a C
 
 - **Sync button ab proof ke saath:** har manual tap turant `cm:manual-sync` se chalta hai (bina 1.2s debounce), lists fresh hoti hain, aur banner me result dikhta hai — `✅ N entry sync ho gayi!` / `✅ Sab sync hai` / `⏳ N bheji · M baaki` / `📴 Offline ho`. Khaali queue par tap karne par pehle kuch dikhta hi nahi tha (isliye nakli lagta tha) — ab har tap ka hisaab milta hai.
 
+- **रसीद शेष बकाया fix (₹15 → sahi ₹10):** रसीद `pendingDues` (billed−jama) dikhati thi jabki advance alag line me minus tha — ab `netBalance` (billed−jama−advance). WhatsApp bill text + reminder me bhi wahi. Proof: 8 items ka jod 510, 510−495−5=10.
+- **Summary calc ab server se EXACT match:** client `recalcSummary` me 2 farak the — (1) cash entries kul bill me jud jaati thi (server credit-only), (2) overpayment advance me nahi judta tha. Isliye har jama/delete ke baad numbers jump karte the; remount par wapas sahi. Ab 6 scenarios me client==server verify.
+- **रसीद lines me rate:** har item `5.0kg × ₹3 = ₹15` format me (pehle rate nahi dikhta tha, verify nahi hota tha) + sirf udhaar entries (cash receipt se bahar — totals, bills tab, KhataBook sab credit-based, ek jaisa).
+- **Instant UI (tab switch ka intezaar khatam):** CustomerDetail + BillsList + QuickEntry dashboard ab `cm:sync-done` par auto-refresh — jama/entry turant dikhegi. KhataBook offline-no-data me pending khate dikhata hai (pehle khaali list rehti thi).
+- **`₹NaN` wali row khatam:** offline jama par fake response prepend ho jata tha (blank label + ₹NaN amount) — ab offline toast + sync par asli row.
+
 ## [1.0.24] - 2026-09-21
 
 ### Added
