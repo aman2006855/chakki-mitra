@@ -204,6 +204,18 @@ export default function CustomerDetail({
     return shopName;
   };
 
+  // Bill/reminder ke neeche DUKAAN ka number — customer ka apna number bekaar tha
+  const getShopPhone = () => {
+    try {
+      const ls = localStorage.getItem("chakki_mitra_settings");
+      if (ls) {
+        const s = JSON.parse(ls);
+        if (s.shopPhone) return String(s.shopPhone);
+      }
+    } catch {}
+    return "";
+  };
+
   // API camelCase (createdAt) deta hai — purana cache snake_case bhi ho sakta hai
   const txDate = (t: Transaction | Payment): string => {
     return t.createdAt || (t as any).created_at || "";
@@ -261,6 +273,7 @@ export default function CustomerDetail({
 
   const sendWhatsAppBill = () => {
     const shopName = getShopName();
+    const shopPhone = getShopPhone();
     const now = new Date();
     const dateStr = now.toLocaleDateString("hi-IN", { day: "numeric", month: "long", year: "numeric" });
 
@@ -297,8 +310,7 @@ export default function CustomerDetail({
       (summary.totalAdvance > 0 ? `🟢 एडवांस: *${formatCurrency(summary.totalAdvance)}*\n` : '') +
       `⏳ *बकाया: ${formatCurrency(summary.netBalance)}*\n` +
       `━━━━━━━━━━━━━━━━\n\n` +
-      `🙏 ${shopName}\n` +
-      `📞 ${customer.phone}`
+      `🙏 ${shopName}` + (shopPhone ? `\n📞 ${shopPhone}` : "")
     );
     window.open(`https://wa.me/91${customer.phone.replace(/^0+/, "")}?text=${msg}`, "_blank");
   };

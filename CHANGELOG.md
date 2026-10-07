@@ -84,6 +84,8 @@ All notable changes to this project are documented here. Format follows Keep a C
 - **Instant UI (tab switch ka intezaar khatam):** CustomerDetail + BillsList + QuickEntry dashboard ab `cm:sync-done` par auto-refresh — jama/entry turant dikhegi. KhataBook offline-no-data me pending khate dikhata hai (pehle khaali list rehti thi).
 - **`₹NaN` wali row khatam:** offline jama par fake response prepend ho jata tha (blank label + ₹NaN amount) — ab offline toast + sync par asli row.
 
+- **WhatsApp bill me ab dukaan ka number:** footer me customer ka apna number aa raha tha (`📞 9610099802`) — ab Settings ka `shopPhone` aayega; set nahi hai to line gayab (galat number se behtar).
+
 ## [1.0.24] - 2026-09-21
 
 ### Added
